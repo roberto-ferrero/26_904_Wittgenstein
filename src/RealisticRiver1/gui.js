@@ -28,7 +28,7 @@ export function addRealisticRiver1Gui(river, parent = null) {
   const fAdv = gui.addFolder('Corriente de avance');
   if (river.hasChannelUV) {
     fAdv.add(s, 'advance', 0, 1, 0.01).name('avance frente a turbulencia').onChange(apply);
-    fAdv.add(s, 'advanceSpeed', 0, 3, 0.05).name('velocidad de avance (× río)');
+    fAdv.add(s, 'advanceSpeed', -3, 3, 0.05).name('velocidad de avance (× río, negativa = al revés)');
     fAdv.add(s, 'advanceFoam', 0, 1.5, 0.01).name('líneas de espuma del avance').onChange(apply);
     fAdv.add(s, 'channelWidth', 20, 400, 1).name('ancho del cauce (m)').onChange(apply);
   } else {

@@ -51,7 +51,7 @@ export const RIVER_DEFAULTS = {
   // turbulencia local (0 = solo simulación, 1 = solo avance), factor sobre la velocidad del río, ancho del cauce (m)
   // para pasar la u del cauce a metros y metros por unidad de v
   advance: 0.7,
-  advanceSpeed: 1,
+  advanceSpeed: 1, // negativo: avance al revés (aguas arriba)
   advanceFoam: 0.8, // líneas de espuma que viajan con la corriente de avance
   channelWidth: 120,
   channelScale: 40,
@@ -127,6 +127,18 @@ export async function createRealisticRiver1({
   // coordenadas del cauce (para la corriente de avance): segundo UV de la lámina, si lo trae
   const hasChannelUV = !!geometry.attributes.uv1;
   const surface = createSurface(state, normalTexture ?? water.material?.normalMap ?? null, domain, flow, bubbles, hasChannelUV);
+  // sentido de la v del cauce: glTF invierte la V de Blender, así que la v puede crecer o decrecer aguas abajo. Se
+  // mira cómo cambia la v en el sentido general del río (flowDirection) y se avanza hacia donde va el agua
+  if (hasChannelUV) {
+    const pos = geometry.attributes.position, ch = geometry.attributes.uv1;
+    const [dx, dz] = [flowDirection[0], flowDirection[2]];
+    let sd = 0, sv = 0, sdd = 0, sdv = 0, n = 0;
+    for (let i = 0; i < pos.count; i += 5) {
+      const d = pos.getX(i) * dx + pos.getZ(i) * dz, v = ch.getY(i);
+      sd += d; sv += v; sdd += d * d; sdv += d * v; n++;
+    }
+    surface.channelSign = sdv - (sd * sv) / n >= 0 ? 1 : -1;
+  }
   const object = new THREE.Mesh(geometry, surface.material);
   object.name = 'RealisticRiver1';
   water.matrixWorld.decompose(object.position, object.quaternion, object.scale);

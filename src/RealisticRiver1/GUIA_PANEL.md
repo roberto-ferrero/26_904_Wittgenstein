@@ -17,7 +17,7 @@ espejo) y **Aguas bravas intensas** (crecida); el arranque es de aguas bravas tu
 | exageración de la velocidad | 0-10 | Multiplica lo que se ve: desde lejos, la velocidad real parece casi quieta. |
 | **Corriente de avance** | | Carpeta: el avance del agua por el cauce, siguiendo sus curvas. |
 | · avance frente a turbulencia | 0-1 | 1 = el agua solo avanza por el cauce; 0 = solo la turbulencia de la simulación. |
-| · velocidad de avance (× río) | 0-3 | Multiplica la velocidad del río para el avance de ondas y líneas de espuma. |
+| · velocidad de avance (× río, negativa = al revés) | −3-3 | Multiplica la velocidad del río para el avance de ondas y líneas de espuma; con valores negativos el avance va aguas arriba. |
 | · líneas de espuma del avance | 0-1,5 | Vetas largas de espuma que viajan aguas abajo y marcan la corriente. |
 | · ancho del cauce (m) | 20-400 | Ancho medio de orilla a orilla, para que el dibujo no se estire de lado. |
 | tamaño ondas (m) | 2-300 | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |

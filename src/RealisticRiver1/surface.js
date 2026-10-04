@@ -207,7 +207,8 @@ export function createSurface(state, normalTexture, domain, flow, bubbles, hasCh
     u.time.value += dt;
     // la corriente de avance va a la velocidad del río por su factor (m/s); se acumula para poder cambiarla en marcha
     // sin saltos
-    u.advanceOffset.value += dt * state.flowSpeed * state.flowBoost * state.advanceSpeed;
+    // (channelSign: la v del cauce crece aguas abajo (1) o aguas arriba (−1); advanceSpeed negativo invierte el avance)
+    u.advanceOffset.value += dt * state.flowSpeed * state.flowBoost * state.advanceSpeed * api.channelSign;
     // las ondas capilares van a una fracción pequeña del viento
     const drift = Math.min(0.04 * wind.speed, 1.2) * dt;
     u.windOffset.value.x += wind.x * drift;
@@ -245,5 +246,6 @@ export function createSurface(state, normalTexture, domain, flow, bubbles, hasCh
   }
 
   apply();
-  return { material, uniforms: u, apply, update, setWind, setMaps, setVelocityTexture, setFoamTexture, dispose: () => material.dispose() };
+  const api = { material, uniforms: u, apply, update, setWind, setMaps, setVelocityTexture, setFoamTexture, channelSign: 1, dispose: () => material.dispose() };
+  return api;
 }

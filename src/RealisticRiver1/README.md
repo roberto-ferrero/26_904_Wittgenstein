@@ -146,7 +146,7 @@ renderer.setAnimationLoop(() => {
 | `turbOpen` | `0.12` | Turbulencia en el resto del cauce, en fracción de la de junto a tierra (aguas bravas; 0 = solo junto a tierra). |
 | `pressureIterations` | `20` | Iteraciones de Jacobi de la proyección. |
 | `advance` | `0.7` | Peso de la corriente de avance frente a la turbulencia local (0 = solo simulación, 1 = solo avance). |
-| `advanceSpeed` | `1` | Factor sobre la velocidad del río para el avance. |
+| `advanceSpeed` | `1` | Factor sobre la velocidad del río para el avance; negativo, al revés. El sentido de la v del cauce se detecta solo con `flowDirection` (glTF invierte la V de Blender). |
 | `advanceFoam` | `0.8` | Densidad de las líneas de espuma que viajan con el avance. |
 | `channelWidth`, `channelScale` | `120`, `40` | Metros de orilla a orilla (para pasar la u del cauce a metros) y metros por unidad de v. |
 | `windRipples` | `0.25` | Fuerza de las ondas de viento a 10 m/s (crece con el viento hasta ×1,5). |
