@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { abs, clamp, fract, mix, positionWorld, select, smoothstep, texture, uniform, vec3 } from 'three/tsl';
+import { abs, attribute, clamp, dot, float, fract, length, mix, mx_noise_float, normalize, positionWorld, select, smoothstep, texture, uniform, vec2, vec3 } from 'three/tsl';
 
 /** Vistas de depuración (el valor es el índice que recibe el shader). */
 export const DEBUG_VIEWS = {
@@ -8,6 +8,8 @@ export const DEBUG_VIEWS = {
   'Profundidad': 2,
   'Obstáculos': 3,
   'Lecho (altura)': 4,
+  'Corriente base (velocidad)': 5,
+  'Corriente base frente a _flujo': 6,
 };
 
 /**
@@ -15,15 +17,21 @@ export const DEBUG_VIEWS = {
  * mientras hay una vista de depuración activa.
  *
  * @param {() => object} getDomain devuelve el dominio actual (cambia al rehornear)
+ * @param {() => object} getFlow devuelve la corriente base actual
+ * @param {THREE.BufferGeometry} geometry lámina (para comparar con sus atributos `_flujo_x`, `_flujo_z`)
+ * @param {object} surfaceUniforms uniformes del material del río (reloj y velocidad)
  */
-export function createDebugMaterial(getDomain) {
-  const d0 = getDomain();
+export function createDebugMaterial(getDomain, getFlow, geometry, surfaceUniforms) {
+  const d0 = getDomain(), f0 = getFlow();
   const u = {
     view: uniform(0, 'int'),
     origin: uniform(d0.origin.clone()),
     size: uniform(d0.size.clone()),
     level: uniform(d0.level),
+    flowOrigin: uniform(f0.origin.clone()),
+    flowSize: uniform(f0.size.clone()),
   };
+  const flowTex = texture(f0.texture);
   const tex = texture(d0.texture);
   const uvDomain = positionWorld.xz.sub(u.origin).div(u.size);
   const dom = tex.sample(uvDomain);
@@ -51,13 +59,38 @@ export function createDebugMaterial(getDomain) {
   const hb = clamp(bed.sub(u.level).add(13).div(13), 0, 1);
   const cBed = mix(vec3(0.1, 0.05, 0.2), vec3(0.9, 0.95, 0.8), hb).mul(lines(bed, 2).mul(0.3).oneMinus());
 
+  // 5. corriente: color por rapidez (relativa a la media) y puntos que viajan con ella (flow map de dos fases)
+  const p = positionWorld.xz;
+  const fl = flowTex.sample(p.sub(u.flowOrigin).div(u.flowSize));
+  const rel = fl.z;
+  const speedRamp = mix(mix(vec3(0.05, 0.1, 0.35), vec3(0.1, 0.65, 0.7), clamp(rel, 0, 1)),
+    mix(vec3(0.95, 0.9, 0.3), vec3(1, 1, 1), clamp(rel.sub(2), 0, 1)), clamp(rel.sub(1), 0, 1));
+  const T = float(6);
+  const ph = surfaceUniforms.time.div(T).add(mx_noise_float(p.mul(0.02)).mul(0.5).add(0.5));
+  const ph0 = fract(ph), ph1 = fract(ph.add(0.5));
+  const vel = fl.xy.mul(surfaceUniforms.speed);
+  const dots = (o) => smoothstep(0.32, 0.12, length(fract(p.sub(o).div(6)).sub(0.5)));
+  const dotMix = mix(dots(vel.mul(ph0.sub(0.5).mul(T))), dots(vel.mul(ph1.sub(0.5).mul(T)).add(vec2(3, 3))), abs(ph0.mul(2).sub(1)));
+  const cFlow = select(rel.greaterThan(0.001), mix(speedRamp, vec3(1), dotMix.mul(0.6)), vec3(0.25));
+
+  // 6. comparación con la tangente del eje (_flujo_x, _flujo_z): verde si coinciden, rojo si difieren 60° o más
+  let cCompare = vec3(0.25);
+  if (geometry.attributes._flujo_x && geometry.attributes._flujo_z) {
+    const ref = vec2(attribute('_flujo_x', 'float'), attribute('_flujo_z', 'float'));
+    const c = dot(normalize(fl.xy.add(1e-6)), normalize(ref.add(1e-6)));
+    const cCmp = mix(mix(vec3(0.9, 0.1, 0.05), vec3(0.95, 0.8, 0.1), smoothstep(0.5, 0.85, c)), vec3(0.15, 0.75, 0.3), smoothstep(0.85, 0.97, c));
+    cCompare = select(rel.greaterThan(0.001), cCmp.mul(dotMix.mul(0.3).oneMinus()), vec3(0.25));
+  }
+
   const material = new THREE.MeshBasicNodeMaterial();
   material.name = 'RealisticRiver1.debug';
   material.fog = false;
   material.toneMapped = false;
   material.colorNode = select(u.view.equal(1), cShore,
     select(u.view.equal(2), cDepth,
-      select(u.view.equal(3), cObst, cBed)));
+      select(u.view.equal(3), cObst,
+        select(u.view.equal(4), cBed,
+          select(u.view.equal(5), cFlow, cCompare)))));
 
   return {
     material,
@@ -69,6 +102,10 @@ export function createDebugMaterial(getDomain) {
       u.origin.value.copy(d.origin);
       u.size.value.copy(d.size);
       u.level.value = d.level;
+      const f = getFlow();
+      flowTex.value = f.texture;
+      u.flowOrigin.value.copy(f.origin);
+      u.flowSize.value.copy(f.size);
     },
     dispose: () => material.dispose(),
   };

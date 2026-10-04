@@ -33,8 +33,9 @@ Necesita un navegador con WebGPU (Chrome o Edge 113+); sin él, Three.js cae a W
   la orientación se elige hacia dónde mira el escenario sin moverlo. El cielo mueve el sol (color, fuerza y dirección,
   manteniendo la caja de sombras sobre el terreno), la luz hemisférica y el mapa de entorno.
 - **Río: [RealisticRiver1](src/RealisticRiver1/README.md)**, módulo reutilizable en construcción para un río con
-  corriente, remolinos y espuma ([plan](docs/RealisticRiver1_PLAN.md)). Por ahora (fase F0) sirve el agua con el mismo
-  aspecto que el agua plana anterior, que sigue disponible en `src/escena/agua.js`.
+  corriente, remolinos y espuma ([plan](docs/RealisticRiver1_PLAN.md)). Hecho: mapas del cauce horneados al cargar y
+  corriente base con las ondas desplazadas por ella, de norte a sur, hacia la cámara. El agua plana anterior sigue
+  disponible en `src/escena/agua.js`.
 - **Atmósfera sobre la escena**: la perspectiva aérea de VolumetricSky1, con la misma atmósfera que pinta el cielo,
   y su niebla en capa sobre el río (densidad 0,00175 hasta la cota del agua y transición de 11 m, los valores del
   visor de la v10). La niebla propia del visor de la v10 se ha quitado.

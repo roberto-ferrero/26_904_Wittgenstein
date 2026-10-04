@@ -11,7 +11,7 @@ y reutilizable, como [VolumetricSky1](../VolumetricSky1/README.md). Plan complet
 |---|---|---|
 | F0. Esqueleto | API fijada (creación, `update(dt)`, `state` + `apply()`, `dispose()`), material propio con el aspecto del agua plana anterior, panel | **Hecha** |
 | F1. Dominio | Lecho, máscara, distancia a la orilla, profundidad y obstáculos horneados en el navegador; vistas de depuración | **Hecha** |
-| F2. Corriente base | Función de corriente con profundidad e islas; normales con flow map | Pendiente |
+| F2. Corriente base | Función de corriente con profundidad e islas; normales con flow map | **Hecha** |
 | F3. Superficie | Color por profundidad, orilla transparente, Fresnel, viento | Pendiente |
 | F4. Simulación viva | Remolinos (Stable Fluids 2D en compute) | Pendiente |
 | F5. Espuma | Espuma advectada con fuentes físicas | Pendiente |
@@ -60,6 +60,8 @@ renderer.setAnimationLoop(() => {
 | `obstacles` | `[]` | Objetos, grupos o `InstancedMesh` que cuentan como obstáculos donde sobresalen de la lámina y el terreno de debajo quedaría bajo el agua. Se excluyen del terreno. |
 | `cellSize` | `1` | Metros por celda del dominio. |
 | `margin` | `8` | Metros de dominio alrededor de la lámina. |
+| `flowCellSize` | `2` | Metros por celda de la corriente base (múltiplo de `cellSize`). |
+| `flowDirection` | `[0, 0, 1]` | Sentido general aguas abajo. Solo sirve para saber qué orilla es la izquierda. |
 | `normalTexture` | `water.material.normalMap` | Mapa de normales de detalle, repetible. |
 | `settings` | — | Valores iniciales (ver `RIVER_DEFAULTS` en `RealisticRiver1.js`). |
 
@@ -72,8 +74,9 @@ renderer.setAnimationLoop(() => {
 | `state` | Parámetros. Tras cambiarlos a mano, `apply()`. |
 | `defaults` | `RIVER_DEFAULTS`. |
 | `domain` | Dominio horneado (ver más abajo). |
+| `flow` | Corriente base: `vx`, `vz` (relativas, media 1), `psi`, `sample(x, z)`, `texture` y `stats`. |
 | `maps` | Texturas para shaders u otros efectos: `{ domain }`. |
-| `rebuild()` | Vuelve a hornear el dominio (tras mover el terreno o cambiar obstáculos). Devuelve las estadísticas. |
+| `rebuild()` | Vuelve a hornear el dominio y la corriente (tras mover el terreno o cambiar obstáculos). Devuelve las estadísticas del dominio. |
 | `debugViews` | Nombres de las vistas de depuración. |
 | `dispose()` | Quita el río de la escena y libera su material. La geometría sigue siendo de quien la cargó. |
 
@@ -84,10 +87,12 @@ renderer.setAnimationLoop(() => {
 | `enabled` | `true` | Río visible y actualizándose. |
 | `colorShallow`, `colorDeep` | `0x9a9db5`, `0x7d8099` | Color (sRGB) en la orilla y en lo hondo. |
 | `roughness` | `0.07` | Rugosidad de la lámina. |
-| `rippleSpeed` | `0.012` | Velocidad de las ondas de detalle (UV por segundo). |
-| `rippleScale` | `4` | Repeticiones del mapa de normales sobre el UV de la lámina. |
-| `rippleStrength` | `0.3` | Fuerza del mapa de normales. |
-| `debugView` | `'Ninguna'` | Vista de depuración: `'Orilla (distancia con signo)'`, `'Profundidad'`, `'Obstáculos'` o `'Lecho (altura)'`. Pinta el mapa sobre la lámina sin luz. |
+| `flowSpeed` | `1` | Velocidad media real del río (m/s). |
+| `flowBoost` | `2` | Exageración visual: lo que se ve va a `flowSpeed × flowBoost`. |
+| `rippleSize` | `90` | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |
+| `rippleStrength` | `0.3` | Fuerza del mapa de normales; sube hasta ×1,35 donde el agua corre más. |
+| `flowCycle` | `4` | Segundos por ciclo del flow map: más largo, más recorrido de cada fase y más estiramiento. |
+| `debugView` | `'Ninguna'` | Vista de depuración: `'Orilla (distancia con signo)'`, `'Profundidad'`, `'Obstáculos'`, `'Lecho (altura)'`, `'Corriente base (velocidad)'` o `'Corriente base frente a _flujo'`. Pinta el mapa sobre la lámina sin luz. |
 
 ## Dominio (F1)
 
@@ -106,7 +111,37 @@ shaders: `uv = (xz − domain.origin) / domain.size`. `domain` también trae los
 `obstacle`, `bed`, `wet`), `cellAt(x, z)` y `stats` (celdas con agua, de obstáculo, profundidad máxima y tiempos).
 
 En la escena v10: 560 × 1516 celdas de 1 m, 310 k con agua, hasta 12,9 m de profundidad y 104 celdas de obstáculo
-(las rocas al pie del promontorio de la torre).
+(las rocas al pie del promontorio de la torre). Lo que queda fuera del terreno (sin geometría) no cuenta como orilla:
+por ahí entra y sale el río.
+
+## Corriente base (F2)
+
+Flujo medio estacionario que respeta el caudal (`baseflow.js`), en una rejilla de 2 m. Se resuelve la función de
+corriente ψ del caudal por unidad de ancho con `∇·(∇ψ / h) = 0`:
+
+- ψ = 0 en la orilla derecha y 1 en la izquierda (mirando aguas abajo). Las dos orillas son las dos zonas secas más
+  grandes; el resto (rocas, islotes) son islas con ψ constante libre, igual a la media ponderada de su contorno.
+- Contorno abierto donde el agua llega a lo vacío (entrada y salida del río).
+- Estimación inicial con la distancia a cada orilla y Gauss-Seidel rojo-negro sobrerrelajado (ω = 1,9) hasta que
+  ψ cambia menos de 10⁻⁶ por iteración.
+- Velocidad `u = (−∂ψ/∂z, ∂ψ/∂x) / h`, con la profundidad mínima a 0,5 m. Se normaliza a media 1 y se recorta a 3:
+  el material la multiplica por `flowSpeed × flowBoost`.
+
+Textura `RGBA` de media precisión: R, G = velocidad relativa (x, z), B = rapidez relativa, A = ψ.
+
+En la escena v10: 280 × 758 celdas, 78 k con agua, 14 islas, 444 iteraciones y ~1,3 s en CPU al cargar. La vista
+**Corriente base frente a _flujo** compara con la tangente del eje que trae la lámina: coinciden en casi todo el río
+y difieren donde deben, alrededor de la punta del castillo y del promontorio de la torre.
+
+Limitación conocida: un flujo potencial corre más por el interior de las curvas. En un meandro real lo más rápido se
+desplaza al exterior por las corrientes secundarias. La simulación de la F4 lo corregirá en parte; si no basta, se
+añadirá un término de curvatura.
+
+### Normales con flow map
+
+El mapa de normales se desplaza con la corriente en dos fases desfasadas medio ciclo, que se funden para esconder el
+reinicio. Cada punto lleva un desfase de fase con ruido, así que no hay latido común. Hay dos capas (90 m y 33 m por
+repetición), la fina algo más rápida, y la fuerza crece con la rapidez local.
 
 ## Integración con el cielo
 
@@ -120,12 +155,12 @@ Medido en el visor de la escena v10 a 1920 × 1080 con la GPU sincronizada (`awa
 
 | Vista | Con el río | Sin el río |
 |---|---|---|
-| "Camera" | 10,5-11 ms | 10,5-10,8 ms |
+| "Camera" | 9,8-11 ms | 9,4-10,8 ms |
 | Aérea | 8,6 ms | 8,4 ms |
 
-Por fotograma el río cuesta lo mismo que el agua plana anterior: un solo dibujo de 44.322 triángulos con un material
-sencillo (la diferencia entre medidas está dentro del ruido, ±0,3 ms). El horneado del dominio se hace una vez al
-cargar: 0,5-0,9 s (vista cenital y lectura 0,35-0,6 s, CPU 0,15-0,19 s), con el bucle del visor en marcha.
+Por fotograma el río es un solo dibujo de 44.322 triángulos. Con el flow map (cuatro lecturas del mapa de normales,
+una de la corriente y un ruido) cuesta ~0,4 ms desde "Camera"; la variación entre medidas es de ±0,3 ms. Al cargar
+se hace una vez el horneado del dominio (0,5-0,9 s) y la corriente base (~1,3 s), con el bucle del visor en marcha.
 
 ## Archivos
 
@@ -134,7 +169,8 @@ index.js            exportaciones
 RealisticRiver1.js  creación, estado, update, dispose
 surface.js          material TSL de la lámina
 domain.js           horneado del dominio: vista cenital, profundidad, distancia a la orilla, obstáculos
-debug.js            vistas de depuración de los mapas
+baseflow.js         corriente base: función de corriente con profundidad e islas
+debug.js            vistas de depuración de los mapas y de la corriente
 gui.js              panel lil-gui (opcional)
 GUIA_PANEL.md       qué hace cada control
 ```

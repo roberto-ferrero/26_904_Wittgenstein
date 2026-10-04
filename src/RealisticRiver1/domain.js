@@ -51,7 +51,7 @@ function edt1d(f, n, d, v, z) {
 }
 
 /** Distancia (en celdas) de cada celda a la celda `true` más cercana de `seed`. */
-function edt2d(seed, nx, nz) {
+export function edt2d(seed, nx, nz) {
   const n = Math.max(nx, nz);
   const f = new Float64Array(n), d = new Float64Array(n), z = new Float64Array(n + 1);
   const v = new Int32Array(n);
@@ -172,24 +172,27 @@ export async function bakeDomain({ renderer, water, terrain, obstacles, cellSize
   const obstacle = new Uint8Array(N);
   const wet = new Uint8Array(N);
   const dry = new Uint8Array(N);
+  const empty = new Uint8Array(N); // sin geometría (fuera del terreno): ni agua ni orilla
   let nWet = 0, nObstacle = 0;
   for (let j = 0; j < nz; j++) {
     const row = (flip ? nz - 1 - j : j) * stride;
     for (let i = 0; i < nx; i++) {
       const k = i + j * nx, p = row + i * 4;
-      const h = raw[p + 2] > 0.5 ? raw[p] : level + 100;
+      const hit = raw[p + 2] > 0.5;
+      const h = hit ? raw[p] : level + 100;
       const hTerrain = rawTerrain[p + 2] > 0.5 ? rawTerrain[p] : level + 100;
       bed[k] = h;
       const w = h < level;
       wet[k] = w ? 1 : 0;
-      dry[k] = w ? 0 : 1;
+      dry[k] = w || !hit ? 0 : 1; // lo vacío no hace orilla: el río sale del dominio por ahí
+      empty[k] = hit ? 0 : 1;
       if (w) { depth[k] = level - h; nWet++; }
       // obstáculo: seco por el obstáculo, pero el terreno de debajo estaría bajo el agua
       if (!w && raw[p + 1] > 0.5 && hTerrain < level) { obstacle[k] = 1; nObstacle++; }
     }
   }
 
-  // distancia con signo a la orilla: + en el agua (hasta la tierra más cercana), − en tierra (hasta el agua)
+  // distancia con signo a la orilla: + en el agua (hasta la tierra más cercana), − en tierra y en lo vacío (hasta el agua)
   const dToDry = edt2d(dry, nx, nz);
   const dToWet = edt2d(wet, nx, nz);
   const sdf = new Float32Array(N);
@@ -227,7 +230,7 @@ export async function bakeDomain({ renderer, water, terrain, obstacles, cellSize
     nx, nz, cellSize, x0, z0, level,
     size: new THREE.Vector2(nx * cellSize, nz * cellSize),
     origin: new THREE.Vector2(x0, z0),
-    sdf, depth, obstacle, bed, wet,
+    sdf, depth, obstacle, bed, wet, dry, empty,
     texture,
     stats: {
       wetCells: nWet,

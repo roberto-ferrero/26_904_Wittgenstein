@@ -14,7 +14,7 @@ El panel (arriba a la derecha) empieza replegado. Las carpetas, en orden:
 | **Cielo e iluminación** | El sol, la luz de la escena y la exposición. Además de lo de VolumetricSky1, aquí está *Sombras del sol* (activa o quita las sombras). |
 | **Atmósfera y nubes** | El aire (turbidez, azul, perspectiva aérea) y las nubes volumétricas. |
 | **Niebla en capa** | La niebla adicional entre dos cotas (ahora, la nieblina del río). |
-| **Agua** ([RealisticRiver1](src/RealisticRiver1/GUIA_PANEL.md)) | Colores de la orilla y del fondo según la profundidad, rugosidad (más baja = reflejos más nítidos) y velocidad, escala y fuerza de las ondas. |
+| **Agua** ([RealisticRiver1](src/RealisticRiver1/GUIA_PANEL.md)) | Colores de la orilla y del fondo según la profundidad, rugosidad (más baja = reflejos más nítidos), velocidad del río y su exageración, tamaño y fuerza de las ondas, y depuración (mapas del cauce y corriente). |
 | **Vegetación** | *visible*; *LOD0 hasta (m)*: hasta qué distancia los árboles usan la malla detallada; *distancia máx. (m)*: más allá no se dibujan; *instancias LOD0 / LOD1*: lecturas de cuántos árboles hay en cada nivel; *proyecta sombras*. **Viento**: *fuerza* (amplitud del balanceo), *velocidad*, *temblor hojas* y *hacia (° desde el norte)*, con la misma convención que el viento de las nubes. Este viento mueve también la hiedra del castillo. |
 | **Visibilidad** | Muestra u oculta el terreno con las rocas, el agua, el castillo y la torre. |
 

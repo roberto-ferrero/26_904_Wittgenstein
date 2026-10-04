@@ -4,7 +4,7 @@ Río con corriente visible para el visor de la escena v10 (Three.js r186, `WebGP
 cauce, remolinos en las márgenes y detrás de los obstáculos, y espuma que deja ver el comportamiento hidráulico. Se
 hace como módulo autocontenido y reutilizable, igual que [VolumetricSky1](../src/VolumetricSky1/README.md).
 
-Estado: **aprobado; en construcción**. Hecho: F0, F1.
+Estado: **aprobado; en construcción**. Hecho: F0, F1, F2.
 
 ---
 
@@ -133,8 +133,8 @@ de corriente ψ** del caudal por unidad de ancho (q = h·u), resolviendo `∇·(
 - La velocidad es `u = (∂ψ/∂z, −∂ψ/∂x) / h`: no se sale del cauce, rodea las piedras y se acelera en los bajíos y
   estrechamientos, y se frena en las pozas. Es lo que hace legible el comportamiento hidráulico.
 
-Se resuelve en GPU con Jacobi o Gauss-Seidel rojo-negro (unos cientos de iteraciones al cargar; al añadir una piedra se
-parte de la solución anterior, así que bastan unas decenas). Se compara con `_flujo_x/_flujo_z` para validar el sentido.
+Se resuelve en CPU con Gauss-Seidel rojo-negro sobrerrelajado a 2 m de celda (444 iteraciones y ~1,3 s al cargar en
+la escena v10; en el plan inicial era en GPU). Al añadir una piedra se podrá partir de la solución anterior. Se compara con `_flujo_x/_flujo_z` para validar el sentido.
 
 Con solo esto el río ya se mueve bien a coste casi nulo por fotograma, y sirve de modo "bajo" y de alternativa para
 WebGL 2.
@@ -234,7 +234,7 @@ Cada fase deja el visor funcionando, con captura desde "Camera" y aérea, y medi
 |---|---|---|
 | **F0. Esqueleto** ✅ | Carpeta del módulo, adaptador en `src/escena/agua.js`, material que reproduce el agua actual, panel vacío y medición de partida. | El visor igual que hoy pero con el agua servida por RealisticRiver1. |
 | **F1. Dominio** ✅ | Vista cenital, máscara, profundidad, distancia a la orilla, obstáculos desde las 520 rocas. Vistas de depuración. | Panel "Depuración" que pinta cada mapa sobre el agua. |
-| **F2. Corriente base** | Función de corriente con profundidad e islas, velocidad, vista LIC/flechas, comparación con `_flujo_*`. Primer material con normales desplazadas por el flow map. | El río ya fluye hacia la cámara, rodea las rocas y se acelera en los estrechamientos. Modo de calidad "bajo" terminado. |
+| **F2. Corriente base** ✅ | Función de corriente con profundidad e islas, velocidad, vista LIC/flechas, comparación con `_flujo_*`. Primer material con normales desplazadas por el flow map. | El río ya fluye hacia la cámara, rodea las rocas y se acelera en los estrechamientos. Modo de calidad "bajo" terminado. |
 | **F3. Superficie** | Material completo: flow map sin latido, color por profundidad, orilla transparente, Fresnel con el entorno del cielo, viento, integración con la niebla. | Agua con aspecto final sin simulación viva; preset "Ilustración". |
 | **F4. Simulación viva** | Stable Fluids en compute con BFECC, vorticidad, proyección ponderada, rozamiento, paso fijo e interpolación. | Remolinos detrás del promontorio de la torre y en las orillas, visibles en la vista de vorticidad y en el agua. |
 | **F5. Espuma** | Advección, fuentes (cizalla, convergencia, obstáculos, orilla, bajíos), textura y umbral. | Líneas de espuma que dibujan la corriente; control de carácter de espejo a hidráulico. |

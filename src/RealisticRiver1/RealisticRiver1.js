@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { createSurface } from './surface.js';
 import { bakeDomain } from './domain.js';
+import { solveBaseFlow } from './baseflow.js';
 import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
 
 /**
@@ -11,7 +12,8 @@ import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
  * - F0: API (creación, update(dt), state + apply(), dispose()) y material propio con el aspecto del agua plana.
  * - F1: dominio horneado al crear el río (domain.js): lecho, agua, profundidad, distancia a la orilla y obstáculos,
  *   con vistas de depuración (debug.js).
- * Corriente base, simulación, espuma y obstáculos en caliente llegan en las fases siguientes sin cambiar esta API.
+ * - F2: corriente base (baseflow.js) y normales desplazadas con ella (flow map, surface.js).
+ * Simulación, espuma y obstáculos en caliente llegan en las fases siguientes sin cambiar esta API.
  *
  * Uso mínimo:
  *   const river = await createRealisticRiver1({ renderer, scene, camera, water: mallaAgua, terrain: terreno });
@@ -26,10 +28,13 @@ export const RIVER_DEFAULTS = {
   colorShallow: 0x9a9db5,
   colorDeep: 0x7d8099,
   roughness: 0.07,
-  // ondas de detalle (mapa de normales que se desplaza)
-  rippleSpeed: 0.012, // unidades de UV por segundo
-  rippleScale: 4, // repeticiones del mapa de normales sobre el UV de la lámina
+  // corriente base: velocidad media real del río y exageración visual (lo que se ve va a flowSpeed × flowBoost)
+  flowSpeed: 1, // m/s
+  flowBoost: 2,
+  // ondas de detalle: mapa de normales desplazado con la corriente (flow map)
+  rippleSize: 90, // metros por repetición de la capa grande (la fina es 0,37 veces); a 400 m de la cámara lo pequeño se pierde
   rippleStrength: 0.3,
+  flowCycle: 4, // segundos por ciclo del flow map: más largo, más estela; más corto, menos estiramiento
   // depuración: una de las claves de DEBUG_VIEWS
   debugView: 'Ninguna',
 };
@@ -51,6 +56,7 @@ export const RIVER_DEFAULTS = {
  */
 export async function createRealisticRiver1({
   renderer, scene, camera, water, terrain = scene, obstacles = [], cellSize = 1, margin = 8,
+  flowCellSize = 2, flowDirection = [0, 0, 1],
   normalTexture, settings = {},
 }) {
   if (!water?.isMesh) throw new Error('RealisticRiver1: hace falta `water`, la malla de la lámina de agua');
@@ -59,19 +65,22 @@ export async function createRealisticRiver1({
   const obstacleList = [...obstacles];
 
   const geometry = water.geometry;
-  const surface = createSurface(geometry, state, normalTexture ?? water.material?.normalMap ?? null);
+  water.updateWorldMatrix(true, false);
 
+  // ---------------------------------------------------------------- dominio (F1) y corriente base (F2)
+  // se hornean con la lámina (fuera de la escena) y antes de añadir el río
+  let domain = await bakeDomain({ renderer, water, terrain: terrainList, obstacles: obstacleList, cellSize, margin });
+  const flowOptions = { cellSize: flowCellSize, direction: [flowDirection[0], flowDirection[2]] };
+  let flow = solveBaseFlow(domain, flowOptions);
+
+  const surface = createSurface(geometry, state, normalTexture ?? water.material?.normalMap ?? null, flow);
   const object = new THREE.Mesh(geometry, surface.material);
   object.name = 'RealisticRiver1';
-  water.updateWorldMatrix(true, false);
   water.matrixWorld.decompose(object.position, object.quaternion, object.scale);
   object.updateMatrixWorld();
   object.receiveShadow = true;
 
-  // ---------------------------------------------------------------- dominio (F1)
-  // se hornea con la lámina del río (misma geometría y transformación que `water`) y sin el propio río en la escena
-  let domain = await bakeDomain({ renderer, water: object, terrain: terrainList, obstacles: obstacleList, cellSize, margin });
-  const debug = createDebugMaterial(() => domain);
+  const debug = createDebugMaterial(() => domain, () => flow, geometry, surface.uniforms);
   scene.add(object);
 
   function apply() {
@@ -87,6 +96,8 @@ export async function createRealisticRiver1({
     const visible = object.visible;
     object.removeFromParent();
     domain = await bakeDomain({ renderer, water: object, terrain: terrainList, obstacles: obstacleList, cellSize, margin, previous: domain });
+    flow = solveBaseFlow(domain, { ...flowOptions, previous: flow });
+    surface.setFlow(flow);
     debug.refresh();
     scene.add(object);
     object.visible = visible;
@@ -102,6 +113,8 @@ export async function createRealisticRiver1({
     debugViews: Object.keys(DEBUG_VIEWS),
     /** Dominio horneado: rejilla, mapas en CPU (`sdf`, `depth`, `obstacle`, `bed`, `wet`) y `texture` (ver domain.js). */
     get domain() { return domain; },
+    /** Corriente base: velocidad relativa (media 1) en CPU (`vx`, `vz`, `sample(x, z)`), ψ y `texture` (ver baseflow.js). */
+    get flow() { return flow; },
     /** Texturas para los shaders o para otros efectos. */
     get maps() { return { domain: domain.texture }; },
     /** Un paso del río. Llamar en cada fotograma antes de `renderer.render`. */
