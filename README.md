@@ -51,6 +51,7 @@ Medido a 1920 × 1080 en el equipo de desarrollo, con la GPU sincronizada en cad
 src/main.js           montaje de la escena, cielo, panel y bucle
 src/core/ui.js        arranque, cabecera y pie de métricas
 src/core/urlState.js  estado del panel y de la cámara en la URL
+src/presets/          conjuntos de configuración del panel (mismas claves que la URL)
 src/escena/           agua y vegetación
 src/VolumetricSky1/   cielo físico con nubes volumétricas (módulo autocontenido, con su README)
 public/escena/        assets de la escena v10 (glb con Draco, datos y vegetación)

@@ -1,0 +1,29 @@
+{
+  "nombre": "Atardecer con niebla en las laderas",
+  "descripcion": "Escenario orientado a 170° (casi al sur), sol de las 17:30 del 21 de junio en Viena, cielo teñido de ámbar y un banco de niebla entre 224 y 283 m que corta las colinas. Valores de Roberto, 04/10/2026.",
+  "valores": {
+    "cielo-e-iluminacion.cielo-activo": true,
+    "cielo-e-iluminacion.orientacion-del-escenario": 170,
+    "cielo-e-iluminacion.posicion-del-sol": "Fecha, hora y lugar",
+    "cielo-e-iluminacion.lugar": "Austria (Viena)",
+    "cielo-e-iluminacion.fecha-aaaa-mm-dd": "2026-06-21",
+    "cielo-e-iluminacion.hora-local": 17.5,
+    "cielo-e-iluminacion.avanzar-la-hora": false,
+    "cielo-e-iluminacion.velocidad-x-tiempo-real": 120,
+    "cielo-e-iluminacion.fuerza-del-sol": 4.6,
+    "cielo-e-iluminacion.luz-ambiente": 0.4,
+    "cielo-e-iluminacion.reflejos-del-cielo": 0.11,
+    "cielo-e-iluminacion.brillo-del-cielo": 1,
+    "cielo-e-iluminacion.color-base-del-cielo": "#fbc16f",
+    "cielo-e-iluminacion.exposicion": 1,
+    "cielo-e-iluminacion.sombras-del-sol": true,
+    "atmosfera-y-nubes.turbidez-aerosoles": 2.5,
+    "atmosfera-y-nubes.azul-del-aire-rayleigh": 1.2,
+    "atmosfera-y-nubes.perspectiva-aerea": true,
+    "atmosfera-y-nubes.fuerza-de-la-perspectiva-aerea": 8.5,
+    "niebla-en-capa.densidad-0-sin-niebla": 0.0028,
+    "niebla-en-capa.cota-baja-m": 224.5,
+    "niebla-en-capa.cota-alta-m": 283,
+    "niebla-en-capa.transicion-m": 15.5
+  }
+}

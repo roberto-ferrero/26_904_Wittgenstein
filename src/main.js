@@ -253,9 +253,25 @@ await ui.step( 'Preparando el panel…', 0.55 );
 const gui = new GUI( { title: 'Wittgenstein Castle', width: 368 } ); // 50 % más ancho que el de lil-gui (245 px)
 gui.close();
 gui.add( { actualizar: () => sky.refresh() }, 'actualizar' ).name( '↻ Actualizar (vuelve a aplicar todo)' );
+// Conjuntos de configuración (src/presets/*.json): valores del panel con las mismas claves que la URL. Elegir uno
+// pone sus valores y devuelve el resto a los de arranque.
+const PRESETS = Object.entries( import.meta.glob( './presets/*.json', { eager: true, import: 'default' } ) )
+	.sort( ( [ a ], [ b ] ) => a.localeCompare( b ) ).map( ( [ , p ] ) => p );
+const SIN_PRESET = '— (arranque o ajustes propios)';
+const presetSel = { nombre: SIN_PRESET };
+const presetCtl = gui.add( presetSel, 'nombre', [ SIN_PRESET, ...PRESETS.map( ( p ) => p.nombre ) ] ).name( 'Configuración' )
+	.onChange( ( nombre ) => {
+		const p = PRESETS.find( ( x ) => x.nombre === nombre );
+		if ( ! p ) return;
+		urlState.applyValues( p.valores, { reset: true } );
+		gui.controllersRecursive().forEach( ( c ) => c.updateDisplay() );
+		urlState.writeURL();
+	} );
+presetCtl.noUrl = true;
+gui.add( { guardar: () => descargarPreset() }, 'guardar' ).name( '⤓ Guardar configuración actual (.json)' );
 // el estado del panel va en la URL (ver más abajo): estos botones la copian o vuelven a los valores de arranque
 gui.add( { copiar: () => copiarURL() }, 'copiar' ).name( '⧉ Copiar URL con esta configuración' );
-gui.add( { restablecer: () => urlState.reset() }, 'restablecer' ).name( '⟲ Restablecer valores de arranque' );
+gui.add( { restablecer: () => { urlState.reset(); presetSel.nombre = SIN_PRESET; presetCtl.updateDisplay(); } }, 'restablecer' ).name( '⟲ Restablecer valores de arranque' );
 
 const fRend = gui.addFolder( 'Rendimiento' ).close();
 const opts = { pixelRatio: renderer.getPixelRatio(), sombras: true };
@@ -300,6 +316,18 @@ const urlState = createUrlState( gui, {
 } );
 controls.addEventListener( 'end', () => urlState.writeURL() );
 urlState.readURL();
+
+/** Descarga los valores actuales (los que difieren del arranque) como conjunto para src/presets/. */
+function descargarPreset() {
+	const nombre = window.prompt( 'Nombre de la configuración:', 'Mi configuración' );
+	if ( ! nombre ) return;
+	const json = JSON.stringify( { nombre, descripcion: '', valores: urlState.snapshot() }, null, 2 );
+	const a = document.createElement( 'a' );
+	a.href = URL.createObjectURL( new Blob( [ json ], { type: 'application/json' } ) );
+	a.download = nombre.normalize( 'NFD' ).replace( /[\u0300-\u036f]/g, '' ).toLowerCase().replace( /[^a-z0-9]+/g, '_' ) + '.json';
+	a.click();
+	URL.revokeObjectURL( a.href );
+}
 
 async function copiarURL() {
 	const url = urlState.shareURL();

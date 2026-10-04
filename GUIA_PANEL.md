@@ -4,6 +4,8 @@ El panel (arriba a la derecha) empieza replegado. Las carpetas, en orden:
 
 | Carpeta | Qué contiene |
 |---|---|
+| **Configuración** | Conjuntos de valores guardados (`src/presets/*.json`). Elegir uno pone sus valores y devuelve el resto a los de arranque. Hoy hay uno: *Atardecer con niebla en las laderas* (orientación 170°, cielo ámbar, banco de niebla entre 224 y 283 m). |
+| **⤓ Guardar configuración actual (.json)** | Botón: pide un nombre y descarga un .json con lo que difiere del arranque. Copiado a `src/presets/`, aparece en *Configuración* (el orden es el del nombre de archivo, por eso empiezan por 01_, 02_…). |
 | **↻ Actualizar** | Botón: vuelve a aplicar todo el cielo, la atmósfera, las nubes y los reflejos. Para cuando algo no se vea como esperas tras cambiar un valor. |
 | **⧉ Copiar URL con esta configuración** | Botón: copia al portapapeles la URL con el estado actual (ver abajo). |
 | **⟲ Restablecer valores de arranque** | Botón: vuelve todos los controles y la vista de la cámara a como estaban al abrir la página sin parámetros, y limpia la URL. |
