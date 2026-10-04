@@ -47,17 +47,25 @@ export const RIVER_DEFAULTS = {
   rippleSize: 40, // metros por repetición de la capa grande (la fina es 0,37 veces)
   rippleStrength: 0.7,
   flowCycle: 4, // segundos por ciclo del flow map: más largo, más estela; más corto, menos estiramiento
+  // corriente de avance (necesita las coordenadas del cauce en el segundo UV de la lámina): peso frente a la
+  // turbulencia local (0 = solo simulación, 1 = solo avance), factor sobre la velocidad del río, ancho del cauce (m)
+  // para pasar la u del cauce a metros y metros por unidad de v
+  advance: 0.7,
+  advanceSpeed: 1,
+  advanceFoam: 0.8, // líneas de espuma que viajan con la corriente de avance
+  channelWidth: 120,
+  channelScale: 40,
   // simulación viva (remolinos): pasos por segundo, confinamiento de vorticidad, segundos para volver a la
   // corriente base, rozamiento junto a tierra (por segundo) e iteraciones de la proyección
   simulation: true,
   simRate: 30,
   vorticity: 0.4,
-  relaxTime: 30,
+  relaxTime: 8,
   bankDrag: 1,
   viscosity: 0.1, // mezcla con los vecinos por paso (quita el ruido de una celda)
-  turbulence: 1.5, // siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s)
+  turbulence: 1.2, // siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s)
   turbScale: 20, // metros de las perturbaciones sembradas
-  turbOpen: 0.4, // turbulencia en el resto del cauce, en fracción de la de junto a tierra (aguas bravas)
+  turbOpen: 0.12, // turbulencia en el resto del cauce, en fracción de la de junto a tierra (aguas bravas)
   pressureIterations: 20,
   // carácter: de espejo calmo (0) a río hidráulico (1); escala la espuma y la fuerza de las ondas
   character: 0.8,
@@ -116,7 +124,9 @@ export async function createRealisticRiver1({
   let flow = solveBaseFlow(domain, flowOptions);
 
   const bubbles = createFoamTexture();
-  const surface = createSurface(state, normalTexture ?? water.material?.normalMap ?? null, domain, flow, bubbles);
+  // coordenadas del cauce (para la corriente de avance): segundo UV de la lámina, si lo trae
+  const hasChannelUV = !!geometry.attributes.uv1;
+  const surface = createSurface(state, normalTexture ?? water.material?.normalMap ?? null, domain, flow, bubbles, hasChannelUV);
   const object = new THREE.Mesh(geometry, surface.material);
   object.name = 'RealisticRiver1';
   water.matrixWorld.decompose(object.position, object.quaternion, object.scale);
@@ -207,6 +217,8 @@ export async function createRealisticRiver1({
     debugViews: Object.keys(DEBUG_VIEWS),
     /** Dominio horneado: rejilla, mapas en CPU (`sdf`, `depth`, `obstacle`, `bed`, `wet`) y `texture` (ver domain.js). */
     get domain() { return domain; },
+    /** La lámina trae coordenadas del cauce (segundo UV): hay corriente de avance. */
+    hasChannelUV,
     /** false con WebGL 2: sin simulación viva ni espuma (el río sigue la corriente base). */
     simulationAvailable: canSimulate,
     /**

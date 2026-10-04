@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { abs, clamp, dFdx, dFdy, dot, exp, float, floor, fract, max, mix, mx_noise_float, normalize, normalMap, positionWorld, sin, smoothstep, texture, uniform, vec2, vec3 } from 'three/tsl';
+import { abs, clamp, dFdx, dFdy, dot, exp, float, floor, fract, max, mix, mx_noise_float, normalize, normalMap, positionWorld, sin, smoothstep, texture, uniform, uv, vec2, vec3 } from 'three/tsl';
 
 /**
  * Material TSL de la lámina de agua.
@@ -19,6 +19,10 @@ import { abs, clamp, dFdx, dFdy, dot, exp, float, floor, fract, max, mix, mx_noi
  * - Espuma (F5): la densidad de la simulación decide qué parte de un dibujo de filamentos y burbujas (desplazado
  *   con el mismo flow map) queda cubierta: poca densidad, solo los filamentos; densidad 1, blanco casi entero. Sube el albedo y la rugosidad y aplana las ondas. De lejos, el mipmap de las
  *   burbujas deja la densidad media: las líneas de espuma se siguen viendo.
+ * - Corriente de avance: si la lámina trae coordenadas del cauce (segundo UV: u de orilla a orilla, v = metros a lo
+ *   largo / `channelScale`), ondas y vetas de espuma se dibujan en ellas y se desplazan sin cortes aguas abajo a la
+ *   velocidad del río, siguiendo cada curva. Es lo que hace que el río se lea avanzando por su cauce; el flow map de
+ *   la simulación queda debajo con el peso `1 − advance` (la turbulencia local).
  * El reloj es `u.time`, que avanza `update(dt)`. La niebla (`scene.fogNode`) llega sola al material.
  *
  * @param {object} state parámetros (ver RIVER_DEFAULTS)
@@ -26,8 +30,9 @@ import { abs, clamp, dFdx, dFdy, dot, exp, float, floor, fract, max, mix, mx_noi
  * @param {object} domain dominio (bakeDomain): `texture`, `origin`, `size`
  * @param {object} flow corriente base (solveBaseFlow): `texture`, `origin`, `size`
  * @param {THREE.Texture} bubbles textura repetible de burbujas (foamTexture.js)
+ * @param {boolean} [hasChannelUV=false] la geometría trae coordenadas del cauce en `uv1`
  */
-export function createSurface(state, normalTexture, domain, flow, bubbles) {
+export function createSurface(state, normalTexture, domain, flow, bubbles, hasChannelUV = false) {
   const u = {
     time: uniform(0),
     colorShallow: uniform(new THREE.Color()),
@@ -52,6 +57,11 @@ export function createSurface(state, normalTexture, domain, flow, bubbles) {
     foamSharpness: uniform(3),
     foamStretch: uniform(4),
     foamVisibility: uniform(1),
+    advanceFoam: uniform(0.6), // densidad de las líneas de espuma de la corriente de avance
+    advance: uniform(0), // peso de la corriente de avance (0 sin coordenadas del cauce)
+    advanceOffset: uniform(0), // metros recorridos aguas abajo (se acumula en update)
+    channelWidth: uniform(120), // metros de orilla a orilla para pasar la u del cauce a metros
+    channelScale: uniform(40), // metros a lo largo por unidad de v del cauce
   };
   const domainTex = texture(domain.texture);
   const flowTex = texture(flow.texture);
@@ -86,10 +96,28 @@ export function createSurface(state, normalTexture, domain, flow, bubbles) {
       return mix(a, b, w1);
     };
     // capa grande y capa fina (más pequeña y algo más rápida, como el rizado que va encima)
-    const n = layer(u.rippleSize, 1).add(layer(u.rippleSize.mul(0.37), 1.25)).mul(0.5);
+    const nLocal = layer(u.rippleSize, 1).add(layer(u.rippleSize.mul(0.37), 1.25)).mul(0.5);
+
+    // corriente de avance: coordenadas del cauce en metros (x de orilla a orilla, y aguas abajo) que se desplazan
+    // de forma continua con el río; las ondas se alargan en el sentido del agua
+    const ch = hasChannelUV ? uv(1) : vec2(0);
+    const cc = vec2(ch.x.mul(u.channelWidth), ch.y.mul(u.channelScale));
+    const ccMove = cc.sub(vec2(0, u.advanceOffset));
+    const ccMoveFast = cc.sub(vec2(0, u.advanceOffset.mul(1.3)));
+    const nAdv = texture(normalTexture, vec2(ccMove.x, ccMove.y.div(1.8)).div(u.rippleSize))
+      .add(texture(normalTexture, vec2(ccMoveFast.x, ccMoveFast.y.div(1.8)).div(u.rippleSize.mul(0.37)).add(vec2(0.21, 0.47)))).mul(0.5);
+    const n = hasChannelUV ? mix(nLocal, nAdv, u.advance) : nLocal;
 
     // espuma: densidad de la simulación × burbujas con el mismo flow map, y umbral
-    const density = foamTex.sample(p.sub(u.flowOrigin).div(u.flowSize)).x.mul(u.foamOn).mul(u.foamVisibility);
+    let density = foamTex.sample(p.sub(u.flowOrigin).div(u.flowSize)).x.mul(u.foamOn).mul(u.foamVisibility);
+    if (hasChannelUV) {
+      // líneas de espuma de la corriente de avance: vetas largas y estrechas en coordenadas del cauce que viajan aguas
+      // abajo con el río (como las líneas de espuma que marcan la corriente en un río real). Más donde corre más y
+      // nada junto a la orilla transparente
+      const lines = texture(bubbles, vec2(ccMove.x.div(u.foamSize.mul(2.5)), ccMove.y.div(u.foamSize.mul(2.5).mul(u.foamStretch).mul(2.5))).add(vec2(0.61, 0.13))).y;
+      const lineMask = smoothstep(0.5, 0.78, lines).mul(clamp(rel, 0.3, 1.5)).mul(smoothstep(0.5, 2.5, depth));
+      density = max(density, lineMask.mul(u.advanceFoam).mul(u.advance).mul(u.foamVisibility));
+    }
     const bub = (size, o) => {
       const a = texture(bubbles, pw.sub(off0).div(size).add(o));
       const b = texture(bubbles, pw.sub(off1).div(size).add(o).add(vec2(0.5, 0.25)));
@@ -122,8 +150,17 @@ export function createSurface(state, normalTexture, domain, flow, bubbles) {
       return acc;
     };
     // (al fundir baldosas baja el contraste: se recupera un poco)
-    const fil = mix(streaks(off0), streaks(off1), w1).sub(0.5).mul(1.35).add(0.5);
-    const pattern = fil.mul(0.55).add(small.x.mul(0.3)).add(big.x.mul(0.15));
+    const filLocal = mix(streaks(off0), streaks(off1), w1).sub(0.5).mul(1.35).add(0.5);
+    let pattern = filLocal.mul(0.55).add(small.x.mul(0.3)).add(big.x.mul(0.15));
+    if (hasChannelUV) {
+      // vetas de la corriente de avance: el mismo dibujo en coordenadas del cauce, estirado aguas abajo y desplazado
+      // con el río (sin cortes ni giros por baldosas)
+      const fs = u.foamSize.mul(3);
+      const filAdv = texture(bubbles, vec2(ccMove.x.div(fs), ccMove.y.div(fs.mul(u.foamStretch)))).y.sub(0.5).mul(1.2).add(0.5);
+      const smallAdv = texture(bubbles, ccMove.div(u.foamSize).add(vec2(0.3, 0.7))).x;
+      const patternAdv = filAdv.mul(0.6).add(smallAdv.mul(0.3)).add(big.x.mul(0.1));
+      pattern = mix(pattern, patternAdv, u.advance);
+    }
     // la densidad decide qué parte del dibujo se cubre: poca densidad, solo los filamentos más altos; densidad 1, todo
     // (con densidad 1 quedan huecos donde el dibujo es más bajo: encaje, no manta)
     const edge = mix(float(1), float(0.42), clamp(density, 0, 1));
@@ -158,12 +195,19 @@ export function createSurface(state, normalTexture, domain, flow, bubbles) {
     u.foamSharpness.value = state.foamSharpness;
     u.foamStretch.value = state.foamStretch;
     u.foamVisibility.value = Math.min(state.character * 2.5, 1.5);
+    u.advance.value = hasChannelUV ? state.advance : 0;
+    u.advanceFoam.value = state.advanceFoam;
+    u.channelWidth.value = state.channelWidth;
+    u.channelScale.value = state.channelScale;
     material.envMapIntensity = state.reflections;
   }
 
   /** Avanza el reloj y las ondas de viento; toma el entorno de la escena si ha cambiado. */
   function update(dt, scene) {
     u.time.value += dt;
+    // la corriente de avance va a la velocidad del río por su factor (m/s); se acumula para poder cambiarla en marcha
+    // sin saltos
+    u.advanceOffset.value += dt * state.flowSpeed * state.flowBoost * state.advanceSpeed;
     // las ondas capilares van a una fracción pequeña del viento
     const drift = Math.min(0.04 * wind.speed, 1.2) * dt;
     u.windOffset.value.x += wind.x * drift;

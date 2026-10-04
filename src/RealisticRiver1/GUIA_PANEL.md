@@ -15,6 +15,11 @@ espejo) y **Aguas bravas intensas** (crecida); el arranque es de aguas bravas tu
 | reflejos del cielo | 0-3 | Intensidad del reflejo del cielo y las nubes solo en el agua (el control del cielo afecta a toda la escena). |
 | velocidad del río (m/s) | 0-4 | Velocidad media real del agua. Un río así va a 0,5-1,5 m/s. |
 | exageración de la velocidad | 0-10 | Multiplica lo que se ve: desde lejos, la velocidad real parece casi quieta. |
+| **Corriente de avance** | | Carpeta: el avance del agua por el cauce, siguiendo sus curvas. |
+| · avance frente a turbulencia | 0-1 | 1 = el agua solo avanza por el cauce; 0 = solo la turbulencia de la simulación. |
+| · velocidad de avance (× río) | 0-3 | Multiplica la velocidad del río para el avance de ondas y líneas de espuma. |
+| · líneas de espuma del avance | 0-1,5 | Vetas largas de espuma que viajan aguas abajo y marcan la corriente. |
+| · ancho del cauce (m) | 20-400 | Ancho medio de orilla a orilla, para que el dibujo no se estire de lado. |
 | tamaño ondas (m) | 2-300 | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |
 | fuerza ondas | 0-1,5 | Cuánto deforman las ondas los reflejos; más donde el agua corre más. |
 | **Remolinos (simulación)** | | Carpeta con la simulación viva: |
@@ -63,7 +68,7 @@ No se guarda en la URL ni en los conjuntos de configuración.
 
 | Control | Qué hace |
 |---|---|
-| Vista | Pinta un mapa del dominio sobre el agua, sin luz. **Orilla**: azules en el agua (más oscuro hacia el centro), ocres en tierra, la orilla en blanco y curvas cada 5 m. **Profundidad**: amarillo en los bajíos, verde, azul y morado a 13 m, con curvas cada metro. **Obstáculos**: rojo donde una roca sobresale del agua, sobre la distancia a la orilla en grises. **Lecho**: altura del fondo con curvas cada 2 m. **Corriente base (velocidad)**: azul oscuro donde el agua va despacio, turquesa a la media, amarillo y blanco al doble o más; los puntos blancos viajan con la corriente. Con la simulación activa, la vista de velocidad muestra la de la simulación. **Simulación (vorticidad)**: rojo y azul según el sentido de giro, más intenso cuanto más gira; los puntos viajan con la corriente. **Espuma (densidad)**: de azul oscuro (nada) a blanco. **Corriente base frente a _flujo**: verde donde la dirección coincide con la que trae la lámina (`_flujo_x`, `_flujo_z`), amarillo y rojo donde difiere. |
+| Vista | Pinta un mapa del dominio sobre el agua, sin luz. **Orilla**: azules en el agua (más oscuro hacia el centro), ocres en tierra, la orilla en blanco y curvas cada 5 m. **Profundidad**: amarillo en los bajíos, verde, azul y morado a 13 m, con curvas cada metro. **Obstáculos**: rojo donde una roca sobresale del agua, sobre la distancia a la orilla en grises. **Lecho**: altura del fondo con curvas cada 2 m. **Corriente base (velocidad)**: azul oscuro donde el agua va despacio, turquesa a la media, amarillo y blanco al doble o más; los puntos blancos viajan con la corriente. Con la simulación activa, la vista de velocidad muestra la de la simulación. **Simulación (vorticidad)**: rojo y azul según el sentido de giro, más intenso cuanto más gira; los puntos viajan con la corriente. **Espuma (densidad)**: de azul oscuro (nada) a blanco. **Coordenadas del cauce**: franjas cada 40 m que avanzan con la corriente de avance (de rojo a azul de orilla a orilla). **Corriente base frente a _flujo**: verde donde la dirección coincide con la que trae la lámina (`_flujo_x`, `_flujo_z`), amarillo y rojo donde difiere. |
 | Dominio | Tamaño de la rejilla, celdas con agua, profundidad máxima y celdas de obstáculo. |
 | Horneado | Lo que tardó el último horneado. |
 | Corriente base | Tamaño de la rejilla, islas, iteraciones y tiempo del cálculo. |

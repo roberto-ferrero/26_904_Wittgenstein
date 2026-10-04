@@ -25,6 +25,16 @@ export function addRealisticRiver1Gui(river, parent = null) {
   gui.add(s, 'reflections', 0, 3, 0.01).name('reflejos del cielo').onChange(apply);
   gui.add(s, 'flowSpeed', 0, 4, 0.05).name('velocidad del río (m/s)').onChange(apply);
   gui.add(s, 'flowBoost', 0, 10, 0.1).name('exageración de la velocidad').onChange(apply);
+  const fAdv = gui.addFolder('Corriente de avance');
+  if (river.hasChannelUV) {
+    fAdv.add(s, 'advance', 0, 1, 0.01).name('avance frente a turbulencia').onChange(apply);
+    fAdv.add(s, 'advanceSpeed', 0, 3, 0.05).name('velocidad de avance (× río)');
+    fAdv.add(s, 'advanceFoam', 0, 1.5, 0.01).name('líneas de espuma del avance').onChange(apply);
+    fAdv.add(s, 'channelWidth', 20, 400, 1).name('ancho del cauce (m)').onChange(apply);
+  } else {
+    fAdv.add({ aviso: 'la lámina no trae coordenadas del cauce (uv1)' }, 'aviso').name('Aviso').disable();
+  }
+  fAdv.close();
   gui.add(s, 'rippleSize', 2, 300, 1).name('tamaño ondas (m)').onChange(apply);
   gui.add(s, 'rippleStrength', 0, 1.5, 0.01).name('fuerza ondas').onChange(apply);
   gui.add(s, 'flowCycle', 0.5, 12, 0.1).name('ciclo del flow map (s)').onChange(apply);

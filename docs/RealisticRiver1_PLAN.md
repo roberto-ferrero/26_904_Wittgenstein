@@ -21,6 +21,10 @@ deshielo con aguas bravas. **Lo que se busca es un río de aguas bravas, no el e
   líneas de espuma que siguen los **remolinos**.
 - **Oleaje marcado** en la superficie, más donde el agua corre más.
 
+- **Avance a lo largo del cauce** (segunda corrección del mismo día): el río debe leerse fluyendo por su curso
+  ondulante, no solo revuelto, con una corriente base de avance parametrizable. Resuelto con la corriente de avance
+  sobre las coordenadas del cauce (ver el README del módulo).
+
 Por eso el arranque del módulo pasa a ser de aguas bravas (carácter 0,8) y el agua lila de la ilustración queda como
 conjunto ("Río de la ilustración"). Esto deja sin efecto la duda 1 de la sección 7.
 

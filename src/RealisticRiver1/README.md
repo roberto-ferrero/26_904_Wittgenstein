@@ -11,6 +11,19 @@ Aguas bravas turquesa, según las referencias de Roberto del 04/10/2026 (`Claude
 agua turquesa y jade, oleaje marcado, espuma blanca en vetas estiradas con la corriente que nace en los rápidos, las
 orillas y el choque con piedras. El agua lila calma de la ilustración es el conjunto "Río de la ilustración" del visor.
 
+## Corriente de avance
+
+Para que el río se lea **avanzando por su cauce** y no solo revuelto (petición de Roberto del 04/10/2026), las ondas y
+unas líneas de espuma se dibujan en las **coordenadas del cauce** de la lámina (segundo UV: u de orilla a orilla,
+v = metros a lo largo / 40, que trae el .glb de la escena) y se desplazan de forma continua aguas abajo a la velocidad
+del río (`flowSpeed × flowBoost × advanceSpeed`). Como esas coordenadas siguen el eje, el avance sigue cada curva sin
+cortes, y en las curvas va más deprisa por el exterior (las líneas de v se abren) y más despacio por el interior,
+como en un meandro real. La simulación (remolinos, espuma de choque y de orillas) queda encima como turbulencia
+local, con el peso `1 − advance`, y vuelve a la corriente base en 8 s para no apartarse del curso.
+
+Vista de depuración **Coordenadas del cauce**: franjas cada 40 m que avanzan con el río. Sin segundo UV en la lámina
+no hay corriente de avance y el panel lo indica.
+
 ## Estado
 
 | Fase | Qué trae | Estado |
@@ -95,6 +108,7 @@ renderer.setAnimationLoop(() => {
 | `rebuild()` | Vuelve a hornear el dominio y la corriente (tras mover el terreno o un obstáculo). La corriente parte de la solución anterior y la simulación conserva sus remolinos. Los rehorneados pedidos mientras hay uno en marcha se juntan en uno. Devuelve una promesa con las estadísticas. |
 | `debugViews` | Nombres de las vistas de depuración. |
 | `sampleVelocity(x, z)` | Velocidad del agua en m/s (x, z de la escena) para objetos que floten: la corriente base por la velocidad del río, inmediata y en CPU (sin los remolinos, que viven en la GPU). |
+| `hasChannelUV` | La lámina trae coordenadas del cauce: hay corriente de avance. |
 | `simulationAvailable` | `false` con WebGL 2: sin simulación viva ni espuma. |
 | `dispose()` | Quita el río de la escena y libera sus materiales y texturas. La geometría sigue siendo de quien la cargó. |
 
@@ -124,13 +138,17 @@ renderer.setAnimationLoop(() => {
 | `simulation` | `true` | Simulación viva activa. Sin ella las ondas siguen la corriente base (calidad baja, sin coste de compute). |
 | `simRate` | `30` | Pasos de simulación por segundo (a paso fijo; como mucho 2 por fotograma). |
 | `vorticity` | `0.4` | Confinamiento de vorticidad. |
-| `relaxTime` | `30` | Segundos en los que la simulación vuelve a la corriente base. |
+| `relaxTime` | `8` | Segundos en los que la simulación vuelve a la corriente base. |
 | `bankDrag` | `1` | Rozamiento junto a tierra (1/s): genera la cizalla de las orillas. |
 | `viscosity` | `0.1` | Mezcla con los vecinos por paso. |
-| `turbulence` | `1.5` | Siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s). |
+| `turbulence` | `1.2` | Siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s). |
 | `turbScale` | `20` | Metros de las perturbaciones sembradas (tamaño típico de los remolinos). |
-| `turbOpen` | `0.4` | Turbulencia en el resto del cauce, en fracción de la de junto a tierra (aguas bravas; 0 = solo junto a tierra). |
+| `turbOpen` | `0.12` | Turbulencia en el resto del cauce, en fracción de la de junto a tierra (aguas bravas; 0 = solo junto a tierra). |
 | `pressureIterations` | `20` | Iteraciones de Jacobi de la proyección. |
+| `advance` | `0.7` | Peso de la corriente de avance frente a la turbulencia local (0 = solo simulación, 1 = solo avance). |
+| `advanceSpeed` | `1` | Factor sobre la velocidad del río para el avance. |
+| `advanceFoam` | `0.8` | Densidad de las líneas de espuma que viajan con el avance. |
+| `channelWidth`, `channelScale` | `120`, `40` | Metros de orilla a orilla (para pasar la u del cauce a metros) y metros por unidad de v. |
 | `windRipples` | `0.25` | Fuerza de las ondas de viento a 10 m/s (crece con el viento hasta ×1,5). |
 | `windSize` | `7` | Metros por repetición de las ondas de viento. |
 | `debugView` | `'Ninguna'` | Vista de depuración: `'Orilla (distancia con signo)'`, `'Profundidad'`, `'Obstáculos'`, `'Lecho (altura)'`, `'Corriente base (velocidad)'` (con la simulación activa muestra su velocidad), `'Corriente base frente a _flujo'` o `'Simulación (vorticidad)'` o `'Espuma (densidad)'`. Pinta el mapa sobre la lámina sin luz. |

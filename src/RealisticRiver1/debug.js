@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { abs, attribute, clamp, dot, float, fract, length, mix, mx_noise_float, normalize, positionWorld, select, smoothstep, texture, uniform, vec2, vec3 } from 'three/tsl';
+import { abs, attribute, uv, clamp, dot, float, fract, length, mix, mx_noise_float, normalize, positionWorld, select, smoothstep, texture, uniform, vec2, vec3 } from 'three/tsl';
 
 /** Vistas de depuración (el valor es el índice que recibe el shader). */
 export const DEBUG_VIEWS = {
@@ -12,6 +12,7 @@ export const DEBUG_VIEWS = {
   'Corriente base frente a _flujo': 6,
   'Simulación (vorticidad)': 7,
   'Espuma (densidad)': 8,
+  'Coordenadas del cauce': 9,
 };
 
 /**
@@ -96,6 +97,16 @@ export function createDebugMaterial(getDomain, getFlow, geometry, surfaceUniform
   const fd = clamp(foamTex.sample(p.sub(u.flowOrigin).div(u.flowSize)).x, 0, 1);
   const cFoam = select(rel.greaterThan(0.001), mix(vec3(0.05, 0.08, 0.25), vec3(1), fd), vec3(0.25));
 
+  // 9. coordenadas del cauce (uv1): franjas cada 40 m a lo largo y gradiente de orilla a orilla; las franjas avanzan
+  //    con la corriente de avance
+  let cChannel = vec3(0.25);
+  if (geometry.attributes.uv1) {
+    const ch = uv(1);
+    const along = ch.y.mul(40).sub(surfaceUniforms.advanceOffset);
+    const band = smoothstep(0.45, 0.5, abs(fract(along.div(40)).sub(0.5)));
+    cChannel = mix(mix(vec3(0.9, 0.3, 0.2), vec3(0.2, 0.4, 0.95), ch.x), vec3(1), band.mul(0.7));
+  }
+
   const material = new THREE.MeshBasicNodeMaterial();
   material.name = 'RealisticRiver1.debug';
   material.fog = false;
@@ -106,7 +117,8 @@ export function createDebugMaterial(getDomain, getFlow, geometry, surfaceUniform
         select(u.view.equal(4), cBed,
           select(u.view.equal(5), cFlow,
             select(u.view.equal(6), cCompare,
-              select(u.view.equal(7), cVort, cFoam)))))));
+              select(u.view.equal(7), cVort,
+                select(u.view.equal(8), cFoam, cChannel))))))));
 
   return {
     material,
