@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { abs, clamp, exp, float, fract, max, mix, mx_noise_float, normalMap, positionWorld, smoothstep, texture, uniform, vec2, vec3 } from 'three/tsl';
+import { abs, clamp, dFdx, dFdy, dot, exp, float, floor, fract, max, mix, mx_noise_float, normalize, normalMap, positionWorld, sin, smoothstep, texture, uniform, vec2, vec3 } from 'three/tsl';
 
 /**
  * Material TSL de la lámina de agua.
@@ -16,8 +16,8 @@ import { abs, clamp, exp, float, fract, max, mix, mx_noise_float, normalMap, pos
  *   corriente.
  * - Reflejos (F3): el entorno de la escena (`scene.environment`, el cielo con nubes de VolumetricSky1) se toma como
  *   `envMap` propio para poder regular su intensidad solo en el agua. El Fresnel es el del material estándar.
- * - Espuma (F5): densidad de la simulación × textura de burbujas desplazada con el mismo flow map, con umbral para
- *   que salgan vetas y no manchas. Sube el albedo y la rugosidad y aplana las ondas. De lejos, el mipmap de las
+ * - Espuma (F5): la densidad de la simulación decide qué parte de un dibujo de filamentos y burbujas (desplazado
+ *   con el mismo flow map) queda cubierta: poca densidad, solo los filamentos; densidad 1, blanco casi entero. Sube el albedo y la rugosidad y aplana las ondas. De lejos, el mipmap de las
  *   burbujas deja la densidad media: las líneas de espuma se siguen viendo.
  * El reloj es `u.time`, que avanza `update(dt)`. La niebla (`scene.fogNode`) llega sola al material.
  *
@@ -50,6 +50,7 @@ export function createSurface(state, normalTexture, domain, flow, bubbles) {
     foamColor: uniform(new THREE.Color()),
     foamSize: uniform(5),
     foamSharpness: uniform(3),
+    foamStretch: uniform(4),
     foamVisibility: uniform(1),
   };
   const domainTex = texture(domain.texture);
@@ -90,19 +91,51 @@ export function createSurface(state, normalTexture, domain, flow, bubbles) {
     // espuma: densidad de la simulación × burbujas con el mismo flow map, y umbral
     const density = foamTex.sample(p.sub(u.flowOrigin).div(u.flowSize)).x.mul(u.foamOn).mul(u.foamVisibility);
     const bub = (size, o) => {
-      const a = texture(bubbles, pw.sub(off0).div(size).add(o)).x;
-      const b = texture(bubbles, pw.sub(off1).div(size).add(o).add(vec2(0.5, 0.25))).x;
+      const a = texture(bubbles, pw.sub(off0).div(size).add(o));
+      const b = texture(bubbles, pw.sub(off1).div(size).add(o).add(vec2(0.5, 0.25)));
       return mix(a, b, w1);
     };
-    const pattern = bub(u.foamSize, vec2(0)).mul(0.65).add(bub(u.foamSize.mul(0.4), vec2(0.3, 0.7)).mul(0.35));
-    const foam = clamp(density.sub(pattern.oneMinus()).mul(u.foamSharpness).add(density.mul(0.25)), 0, 1);
+    // dibujo: filamentos (fbm grande) + paredes de burbuja (dos escalas)
+    const big = bub(u.foamSize.mul(4), vec2(0)), small = bub(u.foamSize, vec2(0.3, 0.7));
+    // vetas estiradas con la corriente: el ruido de filamentos se lee en un sistema local girado con la dirección del
+    // agua y estirado a lo largo de ella. Para no girar coordenadas enormes, el plano se parte en baldosas de 24 m:
+    // cada una gira alrededor de su centro con la dirección que hay allí, y las cuatro más cercanas se funden
+    const L = float(24);
+    const g = pw.div(L).sub(0.5);
+    const g0 = floor(g), gf = fract(g);
+    const hash = (o) => fract(sin(vec2(dot(o, vec2(12.9898, 78.233)), dot(o, vec2(39.3468, 11.135)))).mul(43758.5453));
+    const gdx = dFdx(pw).div(u.foamSize.mul(3)), gdy = dFdy(pw).div(u.foamSize.mul(3));
+    const streaks = (off) => {
+      let acc = float(0);
+      for (const [cx, cy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+        const o = g0.add(vec2(cx, cy)).add(0.5).mul(L);
+        const vo = flowTex.sample(vec2(o.x, o.y.negate()).sub(u.flowOrigin).div(u.flowSize)).xy;
+        const dir = normalize(vec2(vo.x, vo.y.negate()).add(vec2(1e-4, 0)));
+        const perp = vec2(dir.y.negate(), dir.x);
+        const d = pw.sub(o).sub(off);
+        const q = vec2(dot(d, perp), dot(d, dir).div(u.foamStretch)).div(u.foamSize.mul(3)).add(hash(o));
+        const w = (cx ? gf.x : gf.x.oneMinus()).mul(cy ? gf.y : gf.y.oneMinus());
+        // derivadas de la coordenada continua (sin el salto entre baldosas): sin ellas el mipmap elige el nivel más
+        // bajo en las juntas y aparecen rayas
+        acc = acc.add(texture(bubbles, q).grad(gdx, gdy).y.mul(w));
+      }
+      return acc;
+    };
+    // (al fundir baldosas baja el contraste: se recupera un poco)
+    const fil = mix(streaks(off0), streaks(off1), w1).sub(0.5).mul(1.35).add(0.5);
+    const pattern = fil.mul(0.55).add(small.x.mul(0.3)).add(big.x.mul(0.15));
+    // la densidad decide qué parte del dibujo se cubre: poca densidad, solo los filamentos más altos; densidad 1, todo
+    // (con densidad 1 quedan huecos donde el dibujo es más bajo: encaje, no manta)
+    const edge = mix(float(1), float(0.42), clamp(density, 0, 1));
+    const foam = smoothstep(edge, edge.add(float(0.45).div(u.foamSharpness)), pattern).mul(clamp(density.mul(3), 0, 1));
     material.colorNode = mix(waterColor, u.foamColor, foam);
     material.roughnessNode = mix(u.roughness, float(0.65), foam);
     material.opacityNode = max(smoothstep(0, u.shoreFade, depth), foam);
     // ondas de viento: tercera capa que se desplaza con el viento
     const nWind = texture(normalTexture, pw.sub(vec2(u.windOffset.x, u.windOffset.y.negate())).div(u.windSize).add(vec2(0.11, 0.83)));
     // se suman las desviaciones respecto a la normal plana, cada una con su fuerza, y se vuelve a codificar en 0-1
-    const flowStrength = u.rippleStrength.mul(mix(0.55, 1.35, clamp(rel.mul(0.5), 0, 1)));
+    // más oleaje donde el agua corre (en los rápidos el agua se encrespa)
+    const flowStrength = u.rippleStrength.mul(mix(0.45, 1.6, clamp(rel.mul(0.5), 0, 1)));
     const dev = n.xy.sub(0.5).mul(flowStrength).add(nWind.xy.sub(0.5).mul(u.windStrength));
     material.normalNode = normalMap(vec3(dev.mul(foam.oneMinus().mul(0.7).add(0.3)).add(0.5), 1), 1);
   }
@@ -123,6 +156,7 @@ export function createSurface(state, normalTexture, domain, flow, bubbles) {
     u.foamColor.value.setHex(state.foamColor, THREE.SRGBColorSpace);
     u.foamSize.value = state.foamSize;
     u.foamSharpness.value = state.foamSharpness;
+    u.foamStretch.value = state.foamStretch;
     u.foamVisibility.value = Math.min(state.character * 2.5, 1.5);
     material.envMapIntensity = state.reflections;
   }

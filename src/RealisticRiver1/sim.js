@@ -13,13 +13,15 @@ import { edt2d } from './domain.js';
  * 3. Rozamiento con las orillas y los obstáculos (las celdas de agua que tocan tierra frenan: cizalla), viscosidad
  *    (mezcla con los vecinos, quita el ruido de una celda), turbulencia junto a tierra (fuerza sin divergencia, el
  *    rotacional de un ruido 3D que evoluciona con el tiempo, en una banda de ~24 m junto a orillas y obstáculos: siembra
- *    las perturbaciones que la cizalla enrolla en remolinos) y relajación hacia la corriente base con una constante de
+ *    las perturbaciones que la cizalla enrolla (y, con `turbOpen`, también en el resto del cauce, para aguas bravas) en remolinos) y relajación hacia la corriente base con una constante de
  *    tiempo (el río no deriva y conserva su caudal medio).
  * 4. Proyección ponderada por la profundidad (tapa rígida): se resuelve ∇·(h ∇p) = ∇·(h u) con Jacobi y se resta ∇p,
  *    así el caudal h·u no tiene divergencia. Contorno cerrado en tierra y abierto (p = 0) donde el río entra y sale.
  * 5. Espuma (F5): densidad advectada con la velocidad, que se desvanece con el tiempo y nace donde el agua la
  *    produce: cizalla y vorticidad, convergencia en superficie (∇·u < 0, donde se juntan las líneas de espuma), choque
- *    contra orillas y obstáculos (la corriente va hacia tierra), orillas en general y bajíos con corriente.
+ *    contra orillas y obstáculos (la corriente va hacia tierra), orillas en general, bajíos con corriente y rápidos
+ *    (donde el agua corre más que la media, a parches con un ruido que cambia con el tiempo; la advección los estira
+ *    en vetas).
  * 6. Salida a dos texturas RGBA16F para el material: velocidad relativa (dividida por la velocidad media), rapidez
  *    relativa y vorticidad; y espuma.
  *
@@ -80,6 +82,8 @@ export function createSimulation(renderer, flow, state) {
     foamImpact: uniform(1),
     foamBank: uniform(1),
     foamShallow: uniform(1),
+    foamRapids: uniform(1),
+    turbOpen: uniform(0.4), // turbulencia lejos de tierra, en fracción de la de junto a tierra
   };
 
   // ---------------------------------------------------------------- utilidades de rejilla
@@ -161,7 +165,7 @@ export function createSimulation(renderer, flow, state) {
       const phi = (o) => mx_noise_float(vec3(pn.add(o), tz));
       const dphx = phi(vec2(e, 0)).sub(phi(vec2(-e, 0)));
       const dphz = phi(vec2(0, e)).sub(phi(vec2(0, -e)));
-      const turb = vec2(dphz, dphx.negate()).mul(u.turbulence.mul(u.speed).mul(NEAR.element(k)));
+      const turb = vec2(dphz, dphx.negate()).mul(u.turbulence.mul(u.speed).mul(mix(u.turbOpen, float(1), NEAR.element(k))));
       v.addAssign(turb.mul(u.dt));
       // relajación hacia la base
       v.assign(mix(v, s.xy.mul(u.speed), u.relax));
@@ -265,8 +269,15 @@ export function createSimulation(renderer, flow, state) {
       const bank = clamp(n.sub(0.85).div(0.15), 0, 1).mul(rel);
       // bajíos con corriente (menos de ~2 m de agua)
       const shallow = float(1).sub(clamp(s.z.sub(0.5).div(1.5), 0, 1)).mul(rel).mul(open);
+      // aguas bravas: donde el agua corre más que la media rompe en espuma. Un ruido fino (~3,5 m, del orden de la
+      // celda) que cambia deprisa hace que nazca a puntos sueltos; la advección los estira en vetas largas y estrechas
+      // río abajo, como en los rápidos de verdad
+      const px = x.mul(cell);
+      const patch = clamp(mx_noise_float(vec3(px.div(3.5), u.time.mul(1.5))).mul(0.5).add(0.5).sub(0.45).div(0.3), 0, 1);
+      const rapids = rel.sub(0.5).max(0).pow(1.5).mul(patch);
       const src = shear.mul(u.foamShear).add(conv.mul(u.foamConvergence)).add(impact.mul(u.foamImpact))
-        .add(bank.mul(u.foamBank)).add(shallow.mul(u.foamShallow));
+        .add(bank.mul(u.foamBank)).add(shallow.mul(u.foamShallow)).mul(patch.mul(0.8).add(0.4))
+        .add(rapids.mul(u.foamRapids));
       // la fuente se satura (1 − e^(−x)) para que una zona muy activa no llene de blanco todo lo que tiene aguas abajo
       out.assign(clamp(carried.mul(u.foamDecay).add(float(1).sub(src.negate().exp()).mul(u.dt)), 0, 1));
     });
@@ -320,13 +331,15 @@ export function createSimulation(renderer, flow, state) {
     u.turbulence.value = state.turbulence;
     u.turbScale.value = state.turbScale;
     u.foamDecay.value = Math.exp(-h / Math.max(state.foamLife, 0.1));
-    // cantidad general: foamAmount × carácter (0,35 → ×0,1); a carácter 1, ×0,29
-    const amount = state.foamAmount * state.character * 0.29;
+    // cantidad general: foamAmount × carácter × 0,1
+    const amount = state.foamAmount * state.character * 0.1;
     u.foamShear.value = amount * state.foamShear;
     u.foamConvergence.value = amount * state.foamConvergence;
     u.foamImpact.value = amount * state.foamImpact;
     u.foamBank.value = amount * state.foamBank;
     u.foamShallow.value = amount * state.foamShallow;
+    u.foamRapids.value = amount * state.foamRapids;
+    u.turbOpen.value = state.turbOpen;
     if (state.pressureIterations !== pressureIterations) {
       pressureIterations = Math.max(2, Math.round(state.pressureIterations / 2) * 2);
       rebuildSteps();

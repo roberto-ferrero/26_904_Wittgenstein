@@ -8,6 +8,22 @@ Estado: **aprobado; en construcción**. Hecho: F0, F1, F2, F3, F4, F5, F6.
 
 ---
 
+## 0. Resultado deseado (Roberto, 04/10/2026)
+
+Tras la F6, Roberto fijó el resultado con cuatro referencias, guardadas en
+`Claude working folder/referencias_rio/`: rápidos entre rocas, una vista cenital de rápidos y dos ríos turquesa de
+deshielo con aguas bravas. **Lo que se busca es un río de aguas bravas, no el espejo calmo de la ilustración:**
+
+- Agua **turquesa y jade**, opaca por los sedimentos (no un espejo que refleja el cielo).
+- **Espuma blanca abundante en vetas y encaje** estirados con la corriente, con huecos de agua entre medias, no
+  manchas redondas ni una manta blanca.
+- Espuma que nace en los **rápidos** (donde el agua corre más), en las **orillas** y en el **choque con piedras**, y
+  líneas de espuma que siguen los **remolinos**.
+- **Oleaje marcado** en la superficie, más donde el agua corre más.
+
+Por eso el arranque del módulo pasa a ser de aguas bravas (carácter 0,8) y el agua lila de la ilustración queda como
+conjunto ("Río de la ilustración"). Esto deja sin efecto la duda 1 de la sección 7.
+
 ## 1. Punto de partida (lo que ya hay)
 
 Revisado en `public/escena/escena_terreno_draco.glb`, `escena_datos.json`, `src/escena/agua.js` y en el generador de la
@@ -263,7 +279,8 @@ F1-F3 dan el grueso del resultado visual a coste casi nulo; F4-F5 son lo que añ
 
 Cada una con mi opción recomendada. Si no hay respuesta, sigo con la recomendada.
 
-1. **Carácter por defecto.** La ilustración pinta un espejo calmo; un río "hidráulico" tiene espuma visible.
+1. ~~**Carácter por defecto.**~~ Resuelta por Roberto con las referencias: aguas bravas (ver sección 0).
+   Texto original: la ilustración pinta un espejo calmo; un río "hidráulico" tiene espuma visible.
    - **Recomendado:** un control de carácter de 0 (espejo) a 1 (hidráulico), arrancando en ~0,35: reflejo dominante y
      espuma solo en orillas, obstáculos y la estela de la torre. Presets "Ilustración" e "Hidráulico".
    - Alternativa: priorizar la lectura hidráulica (espuma abundante) por encima de la fidelidad a la ilustración.

@@ -5,6 +5,12 @@ márgenes y detrás de los obstáculos, y espuma que deja ver el comportamiento 
 y reutilizable, como [VolumetricSky1](../VolumetricSky1/README.md). Plan completo:
 [docs/RealisticRiver1_PLAN.md](../../docs/RealisticRiver1_PLAN.md).
 
+## Aspecto por defecto
+
+Aguas bravas turquesa, según las referencias de Roberto del 04/10/2026 (`Claude working folder/referencias_rio/`):
+agua turquesa y jade, oleaje marcado, espuma blanca en vetas estiradas con la corriente que nace en los rápidos, las
+orillas y el choque con piedras. El agua lila calma de la ilustración es el conjunto "Río de la ilustración" del visor.
+
 ## Estado
 
 | Fase | Qué trae | Estado |
@@ -91,31 +97,33 @@ renderer.setAnimationLoop(() => {
 | Clave | Por defecto | Qué es |
 |---|---|---|
 | `enabled` | `true` | Río visible y actualizándose. |
-| `colorShallow`, `colorDeep` | `0x9a9db5`, `0x7d8099` | Color (sRGB) con poca agua y en lo hondo. |
-| `absorption` | `4` | Metros de agua para llegar a ~63 % del color de lo hondo (Beer-Lambert). |
+| `colorShallow`, `colorDeep` | `0x8fd0c6`, `0x2f7a78` | Color (sRGB) con poca agua (turquesa claro) y en lo hondo (jade). |
+| `absorption` | `3` | Metros de agua para llegar a ~63 % del color de lo hondo (Beer-Lambert). |
 | `shoreFade` | `1.2` | Metros de profundidad en los que la lámina pasa de transparente a opaca en la orilla. |
-| `roughness` | `0.07` | Rugosidad de la lámina. |
-| `reflections` | `1` | Intensidad del reflejo del cielo (`scene.environment`) solo en el agua. |
+| `roughness` | `0.14` | Rugosidad de la lámina. |
+| `reflections` | `0.55` | Intensidad del reflejo del cielo (`scene.environment`) solo en el agua. |
 | `flowSpeed` | `1` | Velocidad media real del río (m/s). |
-| `flowBoost` | `2` | Exageración visual: lo que se ve va a `flowSpeed × flowBoost`. |
-| `rippleSize` | `90` | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |
-| `rippleStrength` | `0.3` | Fuerza del mapa de normales; sube hasta ×1,35 donde el agua corre más. |
+| `flowBoost` | `3` | Exageración visual: lo que se ve va a `flowSpeed × flowBoost`. |
+| `rippleSize` | `40` | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |
+| `rippleStrength` | `0.7` | Fuerza del mapa de normales; va de ×0,45 donde el agua va despacio a ×1,6 donde corre más. |
 | `flowCycle` | `4` | Segundos por ciclo del flow map: más largo, más recorrido de cada fase y más estiramiento. |
-| `character` | `0.35` | Carácter, de espejo calmo (0) a río hidráulico (1): escala la cantidad y la visibilidad de la espuma. |
+| `character` | `0.8` | Carácter, de espejo calmo (0) a río hidráulico (1): escala la cantidad y la visibilidad de la espuma. |
 | `foamAmount` | `1` | Cantidad general de espuma (se multiplica por el carácter). |
-| `foamLife` | `15` | Segundos de vida de la espuma. |
-| `foamShear`, `foamConvergence`, `foamImpact`, `foamBank`, `foamShallow` | `1.5`, `1.5`, `1`, `0.5`, `0.3` | Peso de cada fuente: remolinos y cizalla, convergencia, choque con orillas y piedras, orillas, bajíos. |
-| `foamColor` | `0xeeeef4` | Color de la espuma (sRGB). |
-| `foamSize` | `5` | Metros por repetición de las burbujas (la capa fina es 0,4 veces). |
+| `foamLife` | `8` | Segundos de vida de la espuma. |
+| `foamShear`, `foamConvergence`, `foamImpact`, `foamBank`, `foamShallow`, `foamRapids` | `1.5`, `1`, `2`, `1`, `1`, `1.5` | Peso de cada fuente: remolinos y cizalla, convergencia, choque con orillas y piedras, orillas, bajíos y rápidos. |
+| `foamColor` | `0xf4f7f6` | Color de la espuma (sRGB). |
+| `foamSize` | `2.5` | Metros por repetición de las burbujas (las vetas son 3 veces más anchas). |
 | `foamSharpness` | `3` | Contraste del umbral: más alto, vetas más definidas. |
+| `foamStretch` | `4` | Cuánto se estiran las vetas a lo largo de la corriente. |
 | `simulation` | `true` | Simulación viva activa. Sin ella las ondas siguen la corriente base (calidad baja, sin coste de compute). |
 | `simRate` | `30` | Pasos de simulación por segundo (a paso fijo; como mucho 2 por fotograma). |
 | `vorticity` | `0.4` | Confinamiento de vorticidad. |
 | `relaxTime` | `30` | Segundos en los que la simulación vuelve a la corriente base. |
 | `bankDrag` | `1` | Rozamiento junto a tierra (1/s): genera la cizalla de las orillas. |
 | `viscosity` | `0.1` | Mezcla con los vecinos por paso. |
-| `turbulence` | `1` | Siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s). |
-| `turbScale` | `30` | Metros de las perturbaciones sembradas (tamaño típico de los remolinos). |
+| `turbulence` | `1.5` | Siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s). |
+| `turbScale` | `20` | Metros de las perturbaciones sembradas (tamaño típico de los remolinos). |
+| `turbOpen` | `0.4` | Turbulencia en el resto del cauce, en fracción de la de junto a tierra (aguas bravas; 0 = solo junto a tierra). |
 | `pressureIterations` | `20` | Iteraciones de Jacobi de la proyección. |
 | `windRipples` | `0.25` | Fuerza de las ondas de viento a 10 m/s (crece con el viento hasta ×1,5). |
 | `windSize` | `7` | Metros por repetición de las ondas de viento. |
@@ -237,22 +245,26 @@ llene de blanco todo lo que tiene aguas abajo:
 - **Choque**: la corriente va hacia una orilla o una piedra (estancamiento aguas arriba).
 - **Orillas**: encaje fino en las 1-2 celdas pegadas a tierra, más donde el agua corre.
 - **Bajíos**: menos de ~2 m de agua con corriente.
+- **Rápidos** (aguas bravas): donde el agua corre más que la media. Nace a puntos sueltos con un ruido fino que cambia
+  deprisa, y la advección los estira en vetas largas y estrechas río abajo. Las demás fuentes también se modulan con
+  ese ruido, para que la espuma nunca salga lisa.
 
 La capa de cizalla pegada a tierra es permanente, así que no cuenta para remolinos ni convergencia (si no, toda la
 orilla sería una banda blanca de 40 m; fue lo que salió en la primera prueba).
 
-En el material (`surface.js`), la densidad se multiplica por una textura de burbujas (`foamTexture.js`: red celular
-repetible generada al cargar) desplazada con el mismo flow map que las ondas, y se umbraliza para que salgan vetas y
-no manchas. La espuma sube el albedo y la rugosidad, aplana las ondas y es opaca también en la orilla transparente.
+En el material (`surface.js`) la densidad decide qué parte de un dibujo queda cubierta de blanco: poca densidad, solo
+los filamentos más altos; densidad 1, casi todo, pero siempre con huecos (encaje, no manta). El dibujo son vetas de
+ruido estiradas a lo largo de la corriente (cada baldosa de 24 m gira el ruido con la dirección local del agua y las
+cuatro más cercanas se funden, con las derivadas continuas para que el mipmap no deje rayas en las juntas) más
+paredes de burbuja (`foamTexture.js`, generada al cargar), todo desplazado con el mismo flow map que las ondas. La espuma sube el albedo y la rugosidad, aplana las ondas y es opaca también en la orilla transparente.
 De lejos, el mipmap de las burbujas deja la densidad media, así que las líneas se siguen viendo.
 
 **Carácter**: un solo control de espejo (0) a hidráulico (1) que escala la cantidad de espuma y su visibilidad.
-Conjuntos del visor: "Río de la ilustración" (carácter 0,15) y "Río hidráulico" (0,85, con más turbulencia y menos
-reflejo para que la espuma contraste).
+Arranca en 0,8 (aguas bravas). Conjuntos del visor: "Río de la ilustración" (carácter 0,15, agua lila y espejo) y
+"Aguas bravas intensas" (carácter 1, turbulencia en todo el cauce, corriente más rápida).
 
-Desde "Camera" la espuma se lee como encaje blanco en las orillas y la punta del castillo; con la niebla y el reflejo
-del cielo tan claros el contraste es suave. En vista aérea se ven las manchas en los remolinos y los rizos detrás del
-promontorio.
+Desde "Camera" (a 300-900 m y con la niebla en capa sobre el río) el agua se lee turquesa con brillos de oleaje y
+espuma fina; de cerca y en vista aérea se ven las vetas de los rápidos y los arcos de espuma de los remolinos.
 
 ## Superficie (F3)
 
@@ -280,7 +292,7 @@ Medido en el visor de la escena v10 a 1920 × 1080 con la GPU sincronizada (`awa
 
 | Vista | Con el río | Sin el río |
 |---|---|---|
-| "Camera" | 11,0-11,4 ms (simulación y espuma) | 10,4 ms (sin simulación) |
+| "Camera" | 10,9-11,4 ms (simulación y espuma) | 10,4 ms (sin simulación) |
 | Aérea | 8,6 ms | 8,4 ms |
 
 Por fotograma el río es un solo dibujo de 44.322 triángulos. Con el flow map, las ondas de viento y el color por

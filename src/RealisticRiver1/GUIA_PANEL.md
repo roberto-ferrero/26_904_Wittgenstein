@@ -22,6 +22,7 @@ En el visor está en la carpeta **Agua**. Los controles irán creciendo con cada
 | · rozamiento en orillas (1/s) | 0-10 | Cuánto frena el agua junto a tierra: más cizalla y más remolinos en las orillas. |
 | · turbulencia junto a tierra | 0-5 | Perturbaciones sembradas junto a orillas y obstáculos que se enrollan en remolinos. 0 = solo cizalla. |
 | · tamaño de la turbulencia (m) | 4-120 | Tamaño típico de los remolinos sembrados. |
+| · turbulencia en todo el cauce | 0-1 | Turbulencia también lejos de las orillas (aguas bravas). 0 = solo junto a tierra. |
 | · viscosidad | 0-0,5 | Suaviza la velocidad y quita el ruido de una celda; muy alta, apaga los remolinos. |
 | · iteraciones de presión | 2-80 | Precisión de la proyección (que el caudal se conserve). Menos, más barato. |
 | · pasos por segundo | 10-60 | Frecuencia de la simulación. Menos, más barato. |
@@ -34,9 +35,11 @@ En el visor está en la carpeta **Agua**. Los controles irán creciendo con cada
 | · choque con orillas y piedras | 0-5 | Espuma donde la corriente va contra tierra. |
 | · a lo largo de las orillas | 0-5 | Encaje fino pegado a la orilla. |
 | · en bajíos | 0-5 | Espuma donde hay poca agua y corriente. |
+| · en rápidos (agua más rápida) | 0-5 | Aguas bravas: espuma que nace a puntos donde el agua corre más que la media y se estira en vetas. |
 | · color | color | Color de la espuma. |
-| · tamaño de las burbujas (m) | 0,5-30 | Tamaño del dibujo de burbujas. |
+| · tamaño de las burbujas (m) | 0,5-15 | Tamaño del dibujo de burbujas. |
 | · definición de las vetas | 0,5-10 | Más alto, vetas de borde más nítido; más bajo, espuma más difusa. |
+| · estiramiento con la corriente | 1-12 | Cuánto se alargan las vetas en el sentido del agua. |
 | ondas de viento | 0-1,5 | Fuerza de las ondas pequeñas que empuja el viento (crece con la velocidad del viento de las nubes). |
 | tamaño ondas de viento (m) | 1-40 | Metros por repetición de las ondas de viento. |
 | ciclo del flow map (s) | 0,5-12 | Cada cuánto se reinicia cada fase del desplazamiento. Más largo, ondas más estiradas por la corriente; más corto, se nota más el fundido. |

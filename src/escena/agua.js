@@ -22,19 +22,14 @@ const lineal = ( rgb ) => new THREE.Color().setRGB( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ]
  */
 export async function crearRioRealista( mallaOriginal, datos, { renderer, scene, camera, terreno, viento = null } ) {
 
-	const base = lineal( datos.agua.color_lineal );
 	const rocas = terreno.getObjectByName( 'Rocas' );
 	const rio = await createRealisticRiver1( {
 		renderer, scene, camera,
 		water: mallaOriginal,
 		terrain: terreno,
 		obstacles: rocas ? [ rocas ] : [],
-		settings: {
-			// los mismos valores que el agua plana: el color de la escena aclarado en la orilla y oscurecido en lo hondo
-			colorShallow: base.clone().multiplyScalar( 1.35 ).getHex( THREE.SRGBColorSpace ),
-			colorDeep: base.clone().multiplyScalar( 0.55 ).getHex( THREE.SRGBColorSpace ),
-			roughness: datos.agua.rugosidad,
-		},
+		// aspecto: el de RealisticRiver1 por defecto (aguas bravas turquesa, las referencias de Roberto); el agua lila
+		// calma de la ilustración está en el conjunto "Río de la ilustración"
 	} );
 	rio.object.name = 'Agua';
 

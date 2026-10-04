@@ -36,7 +36,8 @@ Necesita un navegador con WebGPU (Chrome o Edge 113+); sin él, Three.js cae a W
   corriente, remolinos y espuma ([plan](docs/RealisticRiver1_PLAN.md)). Hecho: mapas del cauce horneados al cargar,
   corriente base con las ondas desplazadas por ella (de norte a sur, hacia la cámara), color por profundidad, orilla
   transparente, ondas de viento y reflejos del cielo regulables. Conjunto "Río de la ilustración" en el panel. Remolinos con una simulación viva en compute que siguen las ondas, y espuma con un control de carácter (de
-  espejo a hidráulico); conjunto "Río hidráulico". Piedras nuevas en caliente
+  espejo a hidráulico); aspecto por defecto de aguas bravas turquesa (referencias de Roberto) y conjuntos "Río de la ilustración" y
+  "Aguas bravas intensas". Piedras nuevas en caliente
   (`addObstacle`) y piedras de prueba en el panel. El agua plana anterior sigue
   disponible en `src/escena/agua.js`.
 - **Atmósfera sobre la escena**: la perspectiva aérea de VolumetricSky1, con la misma atmósfera que pinta el cielo,

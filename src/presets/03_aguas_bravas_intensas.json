@@ -1,0 +1,12 @@
+{
+  "nombre": "Aguas bravas intensas",
+  "descripcion": "Más allá del arranque (que ya es de aguas bravas turquesa): carácter al máximo, turbulencia en todo el cauce, corriente más rápida y espuma más duradera, como un rápido en crecida. RealisticRiver1, 04/10/2026.",
+  "valores": {
+    "agua.caracter-espejo-hidraulico": 1,
+    "agua.exageracion-de-la-velocidad": 4,
+    "agua.fuerza-ondas": 0.9,
+    "remolinos-simulacion.turbulencia-junto-a-tierra": 2.2,
+    "remolinos-simulacion.turbulencia-en-todo-el-cauce": 0.7,
+    "espuma.vida-s": 12
+  }
+}

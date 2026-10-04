@@ -20,7 +20,8 @@ import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
  * - F5: espuma advectada en la simulación con fuentes físicas y pintada con burbujas que siguen la corriente;
  *   control de carácter, de espejo a hidráulico.
  * - F6: obstáculos en caliente (addObstacle / removeObstacle): rehorneado incremental sin perder los remolinos.
- * Simulación, espuma y obstáculos en caliente llegan en las fases siguientes sin cambiar esta API.
+ * Aspecto por defecto: aguas bravas turquesa (las referencias de Roberto del 04/10/2026, en
+ * "Claude working folder/referencias_rio/"); el aspecto calmo de la ilustración es el conjunto "Río de la ilustración".
  *
  * Uso mínimo:
  *   const river = await createRealisticRiver1({ renderer, scene, camera, water: mallaAgua, terrain: terreno });
@@ -32,18 +33,18 @@ import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
 export const RIVER_DEFAULTS = {
   enabled: true,
   // color (sRGB) en la orilla y en lo hondo; se mezclan con la profundidad real (absorción de Beer-Lambert)
-  colorShallow: 0x9a9db5,
-  colorDeep: 0x7d8099,
-  absorption: 4, // metros de agua para llegar a ~63 % del color de lo hondo
+  colorShallow: 0x8fd0c6, // turquesa claro (agua de deshielo con poco fondo)
+  colorDeep: 0x2f7a78, // jade oscuro
+  absorption: 3, // metros de agua para llegar a ~63 % del color de lo hondo
   shoreFade: 1.2, // metros de profundidad en los que la lámina pasa de transparente a opaca en la orilla
-  roughness: 0.07,
-  reflections: 1, // intensidad del reflejo del cielo (scene.environment) en el agua
+  roughness: 0.14,
+  reflections: 0.55, // intensidad del reflejo del cielo (scene.environment) en el agua
   // corriente base: velocidad media real del río y exageración visual (lo que se ve va a flowSpeed × flowBoost)
   flowSpeed: 1, // m/s
-  flowBoost: 2,
+  flowBoost: 3,
   // ondas de detalle: mapa de normales desplazado con la corriente (flow map)
-  rippleSize: 90, // metros por repetición de la capa grande (la fina es 0,37 veces); a 400 m de la cámara lo pequeño se pierde
-  rippleStrength: 0.3,
+  rippleSize: 40, // metros por repetición de la capa grande (la fina es 0,37 veces)
+  rippleStrength: 0.7,
   flowCycle: 4, // segundos por ciclo del flow map: más largo, más estela; más corto, menos estiramiento
   // simulación viva (remolinos): pasos por segundo, confinamiento de vorticidad, segundos para volver a la
   // corriente base, rozamiento junto a tierra (por segundo) e iteraciones de la proyección
@@ -53,24 +54,27 @@ export const RIVER_DEFAULTS = {
   relaxTime: 30,
   bankDrag: 1,
   viscosity: 0.1, // mezcla con los vecinos por paso (quita el ruido de una celda)
-  turbulence: 1, // siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s)
-  turbScale: 30, // metros de las perturbaciones sembradas
+  turbulence: 1.5, // siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s)
+  turbScale: 20, // metros de las perturbaciones sembradas
+  turbOpen: 0.4, // turbulencia en el resto del cauce, en fracción de la de junto a tierra (aguas bravas)
   pressureIterations: 20,
   // carácter: de espejo calmo (0) a río hidráulico (1); escala la espuma y la fuerza de las ondas
-  character: 0.35,
+  character: 0.8,
   // espuma (F5, necesita la simulación): cantidad general, vida (s), peso de cada fuente, aspecto
   foamAmount: 1,
-  foamLife: 15,
+  foamLife: 8,
   foamShear: 1.5,
-  foamConvergence: 1.5,
-  foamImpact: 1,
-  foamBank: 0.5,
-  foamShallow: 0.3,
-  foamColor: 0xeeeef4,
-  foamSize: 5, // metros por repetición de las burbujas (la capa fina es 0,4 veces)
+  foamConvergence: 1,
+  foamImpact: 2,
+  foamBank: 1,
+  foamShallow: 1,
+  foamRapids: 1.5, // rápidos: donde el agua corre más que la media
+  foamColor: 0xf4f7f6,
+  foamSize: 2.5, // metros por repetición de las burbujas (los filamentos son 4 veces más grandes)
   foamSharpness: 3, // contraste del umbral: más alto, vetas más definidas
+  foamStretch: 4, // cuánto se estiran las vetas a lo largo de la corriente
   // ondas de viento (con setWind): fuerza a 10 m/s de viento y metros por repetición
-  windRipples: 0.25,
+  windRipples: 0.3,
   windSize: 7,
   // depuración: una de las claves de DEBUG_VIEWS
   debugView: 'Ninguna',
