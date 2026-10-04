@@ -15,13 +15,19 @@ import { addRealisticRiver1Gui } from '../RealisticRiver1/gui.js';
 
 const lineal = ( rgb ) => new THREE.Color().setRGB( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], THREE.LinearSRGBColorSpace );
 
-/** Río con el módulo RealisticRiver1. `entorno` = { renderer, scene, camera }. */
-export async function crearRioRealista( mallaOriginal, datos, { renderer, scene, camera } ) {
+/**
+ * Río con el módulo RealisticRiver1. `entorno` = { renderer, scene, camera, terreno }: el terreno da el lecho y las
+ * orillas, y sus rocas (el grupo "Rocas") cuentan como obstáculos donde sobresalen del agua.
+ */
+export async function crearRioRealista( mallaOriginal, datos, { renderer, scene, camera, terreno } ) {
 
 	const base = lineal( datos.agua.color_lineal );
+	const rocas = terreno.getObjectByName( 'Rocas' );
 	const rio = await createRealisticRiver1( {
 		renderer, scene, camera,
 		water: mallaOriginal,
+		terrain: terreno,
+		obstacles: rocas ? [ rocas ] : [],
 		settings: {
 			// los mismos valores que el agua plana: el color de la escena aclarado en la orilla y oscurecido en lo hondo
 			colorShallow: base.clone().multiplyScalar( 1.35 ).getHex( THREE.SRGBColorSpace ),

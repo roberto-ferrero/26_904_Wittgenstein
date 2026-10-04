@@ -1,16 +1,20 @@
 import * as THREE from 'three/webgpu';
 import { createSurface } from './surface.js';
+import { bakeDomain } from './domain.js';
+import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
 
 /**
  * RealisticRiver1: río con corriente, remolinos y espuma para Three.js (WebGPURenderer + TSL). Ver README.md y el
  * plan en docs/RealisticRiver1_PLAN.md.
  *
- * Estado actual (F0): esqueleto del módulo. Toma la lámina de agua, la sirve con su propio material (de momento el
- * mismo aspecto que el agua plana anterior) y deja fijada la API: creación, update(dt), state + apply(), dispose().
- * Dominio, corriente base, simulación, espuma y obstáculos llegan en las fases siguientes sin cambiar esta API.
+ * Estado actual:
+ * - F0: API (creación, update(dt), state + apply(), dispose()) y material propio con el aspecto del agua plana.
+ * - F1: dominio horneado al crear el río (domain.js): lecho, agua, profundidad, distancia a la orilla y obstáculos,
+ *   con vistas de depuración (debug.js).
+ * Corriente base, simulación, espuma y obstáculos en caliente llegan en las fases siguientes sin cambiar esta API.
  *
  * Uso mínimo:
- *   const river = await createRealisticRiver1({ renderer, scene, camera, water: mallaAgua });
+ *   const river = await createRealisticRiver1({ renderer, scene, camera, water: mallaAgua, terrain: terreno });
  *   // en cada fotograma, después de sky.update(dt) y antes de renderer.render(scene, camera):
  *   river.update(dt);
  */
@@ -26,6 +30,8 @@ export const RIVER_DEFAULTS = {
   rippleSpeed: 0.012, // unidades de UV por segundo
   rippleScale: 4, // repeticiones del mapa de normales sobre el UV de la lámina
   rippleStrength: 0.3,
+  // depuración: una de las claves de DEBUG_VIEWS
+  debugView: 'Ninguna',
 };
 
 /**
@@ -35,12 +41,22 @@ export const RIVER_DEFAULTS = {
  * @param {THREE.Camera} o.camera
  * @param {THREE.Mesh} o.water lámina de agua: define la cota, la extensión y los atributos por vértice. El río toma
  *   su geometría (no la clona) y su transformación; la malla original no se añade a la escena.
+ * @param {THREE.Object3D|THREE.Object3D[]} [o.terrain] lo que forma el lecho y las orillas; por defecto, la escena
+ * @param {THREE.Object3D[]} [o.obstacles] objetos (o grupos, o InstancedMesh) que cuentan como obstáculos donde
+ *   sobresalen de la lámina; se excluyen del terreno
+ * @param {number} [o.cellSize=1] metros por celda del dominio
+ * @param {number} [o.margin=8] metros de dominio alrededor de la lámina
  * @param {THREE.Texture} [o.normalTexture] mapa de normales de detalle; por defecto el de `water.material.normalMap`
  * @param {object} [o.settings] valores iniciales (claves de RIVER_DEFAULTS)
  */
-export async function createRealisticRiver1({ renderer, scene, camera, water, normalTexture, settings = {} }) {
+export async function createRealisticRiver1({
+  renderer, scene, camera, water, terrain = scene, obstacles = [], cellSize = 1, margin = 8,
+  normalTexture, settings = {},
+}) {
   if (!water?.isMesh) throw new Error('RealisticRiver1: hace falta `water`, la malla de la lámina de agua');
   const state = { ...RIVER_DEFAULTS, ...settings };
+  const terrainList = Array.isArray(terrain) ? terrain : [terrain];
+  const obstacleList = [...obstacles];
 
   const geometry = water.geometry;
   const surface = createSurface(geometry, state, normalTexture ?? water.material?.normalMap ?? null);
@@ -49,12 +65,32 @@ export async function createRealisticRiver1({ renderer, scene, camera, water, no
   object.name = 'RealisticRiver1';
   water.updateWorldMatrix(true, false);
   water.matrixWorld.decompose(object.position, object.quaternion, object.scale);
+  object.updateMatrixWorld();
   object.receiveShadow = true;
+
+  // ---------------------------------------------------------------- dominio (F1)
+  // se hornea con la lámina del río (misma geometría y transformación que `water`) y sin el propio río en la escena
+  let domain = await bakeDomain({ renderer, water: object, terrain: terrainList, obstacles: obstacleList, cellSize, margin });
+  const debug = createDebugMaterial(() => domain);
   scene.add(object);
 
   function apply() {
     object.visible = state.enabled;
     surface.apply();
+    const view = DEBUG_VIEWS[state.debugView] ?? 0;
+    debug.uniforms.view.value = view;
+    object.material = view ? debug.material : surface.material;
+  }
+
+  /** Vuelve a hornear el dominio (p. ej. tras mover el terreno o cambiar los obstáculos). */
+  async function rebuild() {
+    const visible = object.visible;
+    object.removeFromParent();
+    domain = await bakeDomain({ renderer, water: object, terrain: terrainList, obstacles: obstacleList, cellSize, margin, previous: domain });
+    debug.refresh();
+    scene.add(object);
+    object.visible = visible;
+    return domain.stats;
   }
 
   apply();
@@ -63,6 +99,11 @@ export async function createRealisticRiver1({ renderer, scene, camera, water, no
     object,
     state,
     defaults: RIVER_DEFAULTS,
+    debugViews: Object.keys(DEBUG_VIEWS),
+    /** Dominio horneado: rejilla, mapas en CPU (`sdf`, `depth`, `obstacle`, `bed`, `wet`) y `texture` (ver domain.js). */
+    get domain() { return domain; },
+    /** Texturas para los shaders o para otros efectos. */
+    get maps() { return { domain: domain.texture }; },
     /** Un paso del río. Llamar en cada fotograma antes de `renderer.render`. */
     update(dt) {
       if (!state.enabled) return;
@@ -70,10 +111,13 @@ export async function createRealisticRiver1({ renderer, scene, camera, water, no
     },
     /** Pasa `state` al río tras cambiarlo a mano. */
     apply,
-    /** Quita el río de la escena y libera el material (la geometría sigue siendo de quien la cargó). */
+    rebuild,
+    /** Quita el río de la escena y libera sus materiales y texturas (la geometría sigue siendo de quien la cargó). */
     dispose() {
       object.removeFromParent();
       surface.dispose();
+      debug.dispose();
+      domain.texture.dispose();
     },
     // referencias internas, para depurar
     renderer,

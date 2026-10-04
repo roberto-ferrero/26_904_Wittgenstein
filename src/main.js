@@ -207,7 +207,7 @@ controls.update();
 // ---------------------------------------------------------------- Agua
 
 // El agua va en su propio objeto, fácil de sustituir: el río de RealisticRiver1 (crearAguaPlana es la alternativa).
-const agua = mallaAgua ? await crearRioRealista( mallaAgua, datos, { renderer, scene, camera } ) : null;
+const agua = mallaAgua ? await crearRioRealista( mallaAgua, datos, { renderer, scene, camera, terreno } ) : null;
 
 function volverACamera() {
 	camera.position.copy( posInicial );

@@ -4,7 +4,7 @@ Río con corriente visible para el visor de la escena v10 (Three.js r186, `WebGP
 cauce, remolinos en las márgenes y detrás de los obstáculos, y espuma que deja ver el comportamiento hidráulico. Se
 hace como módulo autocontenido y reutilizable, igual que [VolumetricSky1](../src/VolumetricSky1/README.md).
 
-Estado: **aprobado; en construcción**. Hecho: F0.
+Estado: **aprobado; en construcción**. Hecho: F0, F1.
 
 ---
 
@@ -115,7 +115,8 @@ Una rejilla alineada con el mundo que cubre la caja de la lámina con un margen 
 
 1. **Lecho**: una vista cenital ortográfica del terreno (y de los obstáculos) guarda la altura en cada celda.
 2. **Máscara y profundidad**: agua donde el lecho queda por debajo de la cota; profundidad real en metros, sin saturar.
-3. **Distancia con signo a la orilla**: Jump Flooding en compute (~12 pasadas). Da la orilla, la banda de espuma de la
+3. **Distancia con signo a la orilla**: transformada de distancia exacta en CPU (Felzenszwalb, ~0,15 s); en el plan
+   inicial era Jump Flooding en compute, pero así es exacta y no depende del backend. Da la orilla, la banda de espuma de la
    margen, la condición de contorno de la simulación y el desvanecido de la lámina en la orilla.
 4. **Obstáculos**: los que cortan la lámina se rasterizan desde arriba con un plano de corte a la cota del agua.
 
@@ -232,7 +233,7 @@ Cada fase deja el visor funcionando, con captura desde "Camera" y aérea, y medi
 | Fase | Qué se hace | Entregable |
 |---|---|---|
 | **F0. Esqueleto** ✅ | Carpeta del módulo, adaptador en `src/escena/agua.js`, material que reproduce el agua actual, panel vacío y medición de partida. | El visor igual que hoy pero con el agua servida por RealisticRiver1. |
-| **F1. Dominio** | Vista cenital, máscara, profundidad, distancia a la orilla, obstáculos desde las 520 rocas. Vistas de depuración. | Panel "Depuración" que pinta cada mapa sobre el agua. |
+| **F1. Dominio** ✅ | Vista cenital, máscara, profundidad, distancia a la orilla, obstáculos desde las 520 rocas. Vistas de depuración. | Panel "Depuración" que pinta cada mapa sobre el agua. |
 | **F2. Corriente base** | Función de corriente con profundidad e islas, velocidad, vista LIC/flechas, comparación con `_flujo_*`. Primer material con normales desplazadas por el flow map. | El río ya fluye hacia la cámara, rodea las rocas y se acelera en los estrechamientos. Modo de calidad "bajo" terminado. |
 | **F3. Superficie** | Material completo: flow map sin latido, color por profundidad, orilla transparente, Fresnel con el entorno del cielo, viento, integración con la niebla. | Agua con aspecto final sin simulación viva; preset "Ilustración". |
 | **F4. Simulación viva** | Stable Fluids en compute con BFECC, vorticidad, proyección ponderada, rozamiento, paso fijo e interpolación. | Remolinos detrás del promontorio de la torre y en las orillas, visibles en la vista de vorticidad y en el agua. |
