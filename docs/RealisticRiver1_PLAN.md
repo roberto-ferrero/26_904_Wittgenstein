@@ -4,7 +4,7 @@ Río con corriente visible para el visor de la escena v10 (Three.js r186, `WebGP
 cauce, remolinos en las márgenes y detrás de los obstáculos, y espuma que deja ver el comportamiento hidráulico. Se
 hace como módulo autocontenido y reutilizable, igual que [VolumetricSky1](../src/VolumetricSky1/README.md).
 
-Estado: **aprobado; en construcción**. Hecho: F0, F1, F2, F3, F4, F5.
+Estado: **aprobado; en construcción**. Hecho: F0, F1, F2, F3, F4, F5, F6.
 
 ---
 
@@ -238,7 +238,7 @@ Cada fase deja el visor funcionando, con captura desde "Camera" y aérea, y medi
 | **F3. Superficie** ✅ | Material completo: flow map sin latido, color por profundidad, orilla transparente, Fresnel con el entorno del cielo, viento, integración con la niebla. | Agua con aspecto final sin simulación viva; preset "Ilustración". |
 | **F4. Simulación viva** ✅ | Stable Fluids en compute con BFECC, vorticidad, proyección ponderada, rozamiento, paso fijo e interpolación. | Remolinos detrás del promontorio de la torre y en las orillas, visibles en la vista de vorticidad y en el agua. |
 | **F5. Espuma** ✅ | Advección, fuentes (cizalla, convergencia, obstáculos, orilla, bajíos), textura y umbral. | Líneas de espuma que dibujan la corriente; control de carácter de espejo a hidráulico. |
-| **F6. Obstáculos en caliente** | `addObstacle` / `removeObstacle`, re-horneado incremental, botón de piedra de prueba en el panel. | Una piedra añadida en ejecución genera estela y espuma sin recargar. Guía para las piedras futuras. |
+| **F6. Obstáculos en caliente** ✅ | `addObstacle` / `removeObstacle`, re-horneado incremental, botón de piedra de prueba en el panel. | Una piedra añadida en ejecución genera estela y espuma sin recargar. Guía para las piedras futuras. |
 | **F7. Reflejo de la escena** (opcional) | Reflejo plano a media resolución con capas, distorsión por normales; alternativa SSR si sale caro. | Torre y castillo reflejados como en la ilustración, con su coste medido. |
 | **F8. Cierre** | README y GUIA_PANEL del módulo, presets ("Ilustración", "Hidráulico"), claves en la URL, alternativa WebGL 2 (solo corriente base), `sampleVelocity`. | Módulo copiable a otro proyecto, como VolumetricSky1. |
 

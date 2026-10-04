@@ -1,4 +1,5 @@
 import GUI from 'lil-gui';
+import { createTestRock, findWaterPoint } from './testRock.js';
 
 /**
  * Panel de RealisticRiver1 con lil-gui (opcional: el río funciona sin él). Los controles se cuelgan directamente
@@ -70,6 +71,42 @@ export function addRealisticRiver1Gui(river, parent = null) {
   fDebug.add(info, 'horneado').name('Horneado').disable().listen();
   fDebug.add(info, 'corriente').name('Corriente base').disable().listen();
   fDebug.add({ rebuild: async () => { await river.rebuild(); describe(); } }, 'rebuild').name('↻ Volver a hornear dominio y corriente');
+
+  // piedras de prueba: se colocan en el agua donde mira la cámara (centro de la vista) y cuentan como obstáculo
+  const rocks = [];
+  const testRock = { size: 8, info: '' };
+  const fRocks = gui.addFolder('Piedras de prueba').close();
+  const sizeCtl = fRocks.add(testRock, 'size', 2, 30, 0.5).name('tamaño (m)');
+  sizeCtl.noUrl = true;
+  fRocks.add({
+    add: async () => {
+      const p = findWaterPoint(river, river.camera);
+      if (!p) { testRock.info = 'no hay agua en el centro de la vista'; return; }
+      const rock = createTestRock(testRock.size, rocks.length + 1);
+      rock.position.set(p.x, river.domain.level - testRock.size * 0.15, p.z);
+      river.object.parent.add(rock);
+      rocks.push(rock);
+      testRock.info = 'horneando…';
+      const st = await river.addObstacle(rock);
+      testRock.info = `${rocks.length} piedra(s) · rehorneado en ${st.ms.total.toFixed(0)} ms`;
+      describe();
+    },
+  }, 'add').name('＋ Piedra en el centro de la vista');
+  fRocks.add({
+    clear: async () => {
+      // se quitan todas a la vez: los rehorneados pedidos mientras hay uno en marcha se juntan en uno
+      const all = rocks.splice(0);
+      await Promise.all(all.map((r) => {
+        r.removeFromParent();
+        r.geometry.dispose();
+        r.material.dispose();
+        return river.removeObstacle(r);
+      }));
+      testRock.info = '';
+      describe();
+    },
+  }, 'clear').name('✕ Quitar las piedras de prueba');
+  fRocks.add(testRock, 'info').name('Estado').disable().listen();
 
   return { gui, debug: fDebug };
 }

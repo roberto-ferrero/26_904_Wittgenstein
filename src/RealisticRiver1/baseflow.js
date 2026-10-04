@@ -104,6 +104,11 @@ export function solveBaseFlow(domain, {
     for (let k = 0; k < N; k++) { if (label[k] === leftBank) seedL[k] = 1; else if (label[k] === rightBank) seedR[k] = 1; }
     const dL = edt2d(seedL, nx, nz), dR = edt2d(seedR, nx, nz);
     for (let k = 0; k < N; k++) psi[k] = label[k] === leftBank ? 1 : label[k] === rightBank ? 0 : dR[k] / (dL[k] + dR[k] + 1e-9);
+    // con la solución anterior en la misma rejilla (p. ej. tras añadir una piedra) se parte de ella en el agua:
+    // converge en muchas menos iteraciones
+    if (previous?.psi && previous.nx === nx && previous.nz === nz) {
+      for (let k = 0; k < N; k++) if (type[k] === WET && previous.type[k] === WET) psi[k] = previous.psi[k];
+    }
   }
 
   // celdas de agua y sus cuatro vecinos con peso (−1 = contorno abierto)

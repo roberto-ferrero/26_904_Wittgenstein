@@ -41,6 +41,17 @@ En el visor está en la carpeta **Agua**. Los controles irán creciendo con cada
 | tamaño ondas de viento (m) | 1-40 | Metros por repetición de las ondas de viento. |
 | ciclo del flow map (s) | 0,5-12 | Cada cuánto se reinicia cada fase del desplazamiento. Más largo, ondas más estiradas por la corriente; más corto, se nota más el fundido. |
 
+## Piedras de prueba
+
+Para tantear dónde poner piedras antes de modelarlas. No se guardan en la URL.
+
+| Control | Qué hace |
+|---|---|
+| tamaño (m) | Ancho aproximado de la siguiente piedra. |
+| ＋ Piedra en el centro de la vista | Pone una piedra en el agua donde mira el centro de la vista (o en el punto con agua más cercano) y rehornea dominio y corriente (~1,4 s). Los remolinos siguen. |
+| ✕ Quitar las piedras de prueba | Quita todas y rehornea. |
+| Estado | Número de piedras y lo que tardó el último rehorneado. |
+
 ## Depuración del río
 
 No se guarda en la URL ni en los conjuntos de configuración.

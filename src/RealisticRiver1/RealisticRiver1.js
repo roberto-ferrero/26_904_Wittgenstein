@@ -19,6 +19,7 @@ import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
  * - F4: simulación viva en compute (sim.js): remolinos, separación y cizalla; las ondas siguen su velocidad.
  * - F5: espuma advectada en la simulación con fuentes físicas y pintada con burbujas que siguen la corriente;
  *   control de carácter, de espejo a hidráulico.
+ * - F6: obstáculos en caliente (addObstacle / removeObstacle): rehorneado incremental sin perder los remolinos.
  * Simulación, espuma y obstáculos en caliente llegan en las fases siguientes sin cambiar esta API.
  *
  * Uso mínimo:
@@ -137,21 +138,53 @@ export async function createRealisticRiver1({
     object.material = view ? debug.material : surface.material;
   }
 
-  /** Vuelve a hornear el dominio (p. ej. tras mover el terreno o cambiar los obstáculos). */
+  /**
+   * Vuelve a hornear el dominio y la corriente (p. ej. tras mover el terreno o cambiar los obstáculos). La corriente
+   * parte de la solución anterior y la simulación conserva sus remolinos si la rejilla no cambia. Si se pide otro
+   * rehorneado mientras uno está en marcha, se hace uno más al terminar (no se solapan).
+   */
+  let rebuilding = null, rebuildAgain = false;
   async function rebuild() {
-    const visible = object.visible;
-    object.removeFromParent();
-    domain = await bakeDomain({ renderer, water: object, terrain: terrainList, obstacles: obstacleList, cellSize, margin, previous: domain });
-    flow = solveBaseFlow(domain, { ...flowOptions, previous: flow });
-    surface.setMaps(domain, flow);
-    debug.refresh();
-    sim.dispose();
-    sim = createSimulation(renderer, flow, state);
-    debug.setSimTexture(sim.texture, sim.foamTexture);
-    apply();
-    scene.add(object);
-    object.visible = visible;
-    return domain.stats;
+    if (rebuilding) { rebuildAgain = true; return rebuilding; }
+    rebuilding = (async () => {
+      let stats;
+      do {
+        rebuildAgain = false;
+        const t0 = performance.now();
+        const visible = object.visible;
+        object.removeFromParent();
+        domain = await bakeDomain({ renderer, water: object, terrain: terrainList, obstacles: obstacleList, cellSize, margin, previous: domain });
+        scene.add(object);
+        object.visible = visible;
+        flow = solveBaseFlow(domain, { ...flowOptions, previous: flow });
+        surface.setMaps(domain, flow);
+        debug.refresh();
+        if (!sim.updateStatic(flow)) {
+          sim.dispose();
+          sim = createSimulation(renderer, flow, state);
+          debug.setSimTexture(sim.texture, sim.foamTexture);
+        }
+        apply();
+        stats = { ...domain.stats, flow: flow.stats, ms: { ...domain.stats.ms, flow: flow.stats.ms.total, total: performance.now() - t0 } };
+      } while (rebuildAgain);
+      rebuilding = null;
+      return stats;
+    })();
+    return rebuilding;
+  }
+
+  /** Añade un obstáculo (cualquier Object3D, grupo o InstancedMesh) y rehornea. Cuenta donde sobresale del agua. */
+  async function addObstacle(obj) {
+    if (!obstacleList.includes(obj)) obstacleList.push(obj);
+    return rebuild();
+  }
+
+  /** Quita un obstáculo añadido y rehornea. */
+  async function removeObstacle(obj) {
+    const i = obstacleList.indexOf(obj);
+    if (i < 0) return null;
+    obstacleList.splice(i, 1);
+    return rebuild();
   }
 
   apply();
@@ -181,6 +214,10 @@ export async function createRealisticRiver1({
      */
     setWind: surface.setWind,
     rebuild,
+    addObstacle,
+    removeObstacle,
+    /** Obstáculos actuales (no modificar a mano: usar addObstacle / removeObstacle). */
+    get obstacles() { return [...obstacleList]; },
     /** Vuelve a poner la simulación en la corriente base (borra los remolinos). */
     resetSimulation: () => sim.reset(),
     /** Simulación viva: pasos dados, dispatches por paso, uniformes y textura (ver sim.js). */

@@ -15,7 +15,7 @@ y reutilizable, como [VolumetricSky1](../VolumetricSky1/README.md). Plan complet
 | F3. Superficie | Color por profundidad, orilla transparente, reflejos del cielo regulables, ondas de viento | **Hecha** |
 | F4. Simulación viva | Remolinos (Stable Fluids 2D en compute); las ondas siguen su velocidad | **Hecha** |
 | F5. Espuma | Espuma advectada con fuentes físicas, burbujas que siguen la corriente, control de carácter | **Hecha** |
-| F6. Obstáculos en caliente | `addObstacle` / `removeObstacle` | Pendiente |
+| F6. Obstáculos en caliente | `addObstacle` / `removeObstacle` sin perder los remolinos; piedras de prueba en el panel | **Hecha** |
 | F7. Reflejo de la escena | Reflejo plano opcional | Pendiente |
 | F8. Cierre | Presets, WebGL 2, `sampleVelocity` | Pendiente |
 
@@ -79,7 +79,10 @@ renderer.setAnimationLoop(() => {
 | `setWind(x, z, speed)` | Viento sobre el agua para las ondas de viento: dirección hacia la que sopla (ejes de la escena) y m/s. Se puede llamar en cada fotograma. |
 | `simulation` | Simulación viva: `steps`, `dispatchesPerStep`, `uniforms`, `texture`, `reset()` (ver `sim.js`). |
 | `resetSimulation()` | Vuelve a poner la simulación en la corriente base (borra los remolinos). |
-| `rebuild()` | Vuelve a hornear el dominio y la corriente (tras mover el terreno o cambiar obstáculos). Devuelve las estadísticas del dominio. |
+| `addObstacle(obj)` | Añade un obstáculo (Object3D, grupo o `InstancedMesh`) y rehornea. Cuenta donde sobresale del agua. Devuelve una promesa con las estadísticas. |
+| `removeObstacle(obj)` | Quita un obstáculo y rehornea. |
+| `obstacles` | Lista de obstáculos actuales. |
+| `rebuild()` | Vuelve a hornear el dominio y la corriente (tras mover el terreno o un obstáculo). La corriente parte de la solución anterior y la simulación conserva sus remolinos. Los rehorneados pedidos mientras hay uno en marcha se juntan en uno. Devuelve una promesa con las estadísticas. |
 | `debugViews` | Nombres de las vistas de depuración. |
 | `dispose()` | Quita el río de la escena y libera su material. La geometría sigue siendo de quien la cargó. |
 
@@ -193,6 +196,36 @@ Desde "Camera" apenas se ven en las ondas: la espuma de la F5 es la que los har�
 Pendiente respecto al plan: no hay interpolación entre pasos (con campos tan lentos no se nota) ni corrección
 BFECC/MacCormack; la turbulencia sembrada y la viscosidad bastan para remolinos coherentes.
 
+## Obstáculos en caliente y piedras futuras (F6)
+
+`river.addObstacle(obj)` y `river.removeObstacle(obj)` rehornean sin recargar:
+
+1. Dominio: las dos vistas cenitales con el obstáculo nuevo (~0,4-0,6 s, casi todo espera de la lectura de la GPU; el
+   bucle del visor sigue).
+2. Corriente base: parte de la solución anterior en el agua (en la escena v10, 218 iteraciones en lugar de 444;
+   ~0,9 s de CPU, que sí congelan la imagen ese rato).
+3. Simulación: si la rejilla no cambia, solo se suben los datos fijos nuevos (base, profundidad, tipo, cercanía a
+   tierra). La velocidad y la espuma siguen, así que los remolinos no se pierden; donde ahora hay piedra la velocidad
+   pasa a 0 y aguas arriba aparece espuma de choque.
+
+En total ~1,4 s por piedra en la escena v10. Si hiciera falta que no congele, el cálculo de la corriente puede pasar
+a un Worker.
+
+**Piedras de prueba** (panel, Agua → Piedras de prueba): coloca una piedra (icosaedro deformado) del tamaño elegido
+en el agua donde mira el centro de la vista (si ahí no hay al menos 1,5 m de agua, busca el punto así más cercano en
+60 m) y la añade como obstáculo. Sirve para tantear posiciones antes de modelar las de verdad. Con una piedra de 8 m
+en mitad del río sale una media luna de espuma aguas arriba, una pareja de remolinos de giro contrario detrás y una
+estela de espuma.
+
+**Cómo añadir las piedras definitivas** (recomendado):
+
+1. En Blender, modelarlas en una colección propia (por ejemplo `Rocas_Rio`), con la base hundida en el lecho y la
+   parte de arriba por encima de la cota del agua (y = 1,9 en Three.js).
+2. Exportarlas en el .glb del terreno (o en uno aparte).
+3. En el visor, pasarlas como obstáculos: en `crearRioRealista` (`src/escena/agua.js`) añadir el grupo a `obstacles`
+   al crear el río, o llamar a `rio.addObstacle(grupo)` cuando se carguen. Solo cuenta la parte que corta la lámina,
+   así que da igual si alguna queda sumergida (entonces solo cambia la profundidad).
+
 ## Espuma (F5)
 
 La espuma es un escalar de densidad en la rejilla de la simulación (`sim.js`): se advecta con la velocidad, decae
@@ -266,6 +299,7 @@ domain.js           horneado del dominio: vista cenital, profundidad, distancia 
 baseflow.js         corriente base: función de corriente con profundidad e islas
 sim.js              simulación viva en compute: remolinos, cizalla, proyección por profundidad, espuma
 foamTexture.js      textura repetible de burbujas, generada al cargar
+testRock.js         piedras de prueba del panel y punto del agua en el centro de la vista
 debug.js            vistas de depuración de los mapas, la corriente y la vorticidad
 gui.js              panel lil-gui (opcional)
 GUIA_PANEL.md       qué hace cada control

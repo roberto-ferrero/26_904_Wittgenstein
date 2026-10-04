@@ -37,37 +37,7 @@ export function createSimulation(renderer, flow, state) {
   const WET = 1, DRY = 2;
 
   // ---------------------------------------------------------------- datos fijos: base (x, z), profundidad, tipo
-  // donde no hay geometría (entrada y salida del río) se copia la base del agua vecina: el agua entra con ella
-  const baseX = Float32Array.from(flow.vx), baseZ = Float32Array.from(flow.vz);
-  const filled = new Uint8Array(N);
-  for (let k = 0; k < N; k++) filled[k] = flow.type[k] !== 0 ? 1 : 0;
-  for (let pass = 0; pass < 6; pass++) {
-    const next = filled.slice();
-    for (let k = 0; k < N; k++) {
-      if (filled[k]) continue;
-      const i = k % nx, j = (k / nx) | 0;
-      let sx = 0, sz = 0, n = 0;
-      for (const m of [i > 0 ? k - 1 : -1, i < nx - 1 ? k + 1 : -1, j > 0 ? k - nx : -1, j < nz - 1 ? k + nx : -1]) {
-        if (m < 0 || !filled[m] || flow.type[m] === DRY) continue;
-        sx += baseX[m]; sz += baseZ[m]; n++;
-      }
-      if (n) { baseX[k] = sx / n; baseZ[k] = sz / n; next[k] = 1; }
-    }
-    filled.set(next);
-  }
-  // cercanía a tierra (orillas y obstáculos): 1 junto a ella, 0 a 24 m o más
-  const dry = new Uint8Array(N);
-  for (let k = 0; k < N; k++) dry[k] = flow.type[k] === DRY ? 1 : 0;
-  const dDry = edt2d(dry, nx, nz);
-  const near = new Float32Array(N);
-  for (let k = 0; k < N; k++) near[k] = Math.max(0, 1 - (dDry[k] * cell) / 24);
-  const fixed = new Float32Array(N * 4);
-  for (let k = 0; k < N; k++) {
-    fixed[k * 4] = baseX[k];
-    fixed[k * 4 + 1] = baseZ[k];
-    fixed[k * 4 + 2] = Math.max(flow.depth[k], 0.5);
-    fixed[k * 4 + 3] = flow.type[k];
-  }
+  const { fixed, near } = buildStatic(flow);
   const buf = (array, itemSize, type) => storage(new THREE.StorageInstancedBufferAttribute(array, itemSize), type, N);
   const S = buf(fixed, 4, 'vec4').toReadOnly();
   const NEAR = buf(near, 1, 'float').toReadOnly();
@@ -325,6 +295,20 @@ export function createSimulation(renderer, flow, state) {
   rebuildSteps();
 
   let acc = 0, initialized = false, stepCount = 0;
+
+  /**
+   * Tras recalcular la corriente base con la misma rejilla (obstáculos nuevos o quitados): cambia los datos fijos sin
+   * tocar la velocidad ni la espuma, así que los remolinos siguen; donde ahora hay tierra la velocidad pasa a 0.
+   */
+  function updateStatic(fl) {
+    if (fl.nx !== nx || fl.nz !== nz) return false;
+    const st = buildStatic(fl);
+    S.value.array.set(st.fixed);
+    S.value.needsUpdate = true;
+    NEAR.value.array.set(st.near);
+    NEAR.value.needsUpdate = true;
+    return true;
+  }
   function applyState() {
     u.speed.value = state.flowSpeed * state.flowBoost;
     const h = 1 / state.simRate;
@@ -380,6 +364,7 @@ export function createSimulation(renderer, flow, state) {
     uniforms: u,
     applyState,
     reset,
+    updateStatic,
     update,
     get steps() { return stepCount; },
     get dispatchesPerStep() { return steps.length; },
@@ -389,4 +374,47 @@ export function createSimulation(renderer, flow, state) {
       for (const node of [init, advect, curl, forces, divergence, jacobiAB, jacobiBA, subtract, foam, output]) node.dispose?.();
     },
   };
+}
+
+/**
+ * Datos fijos de la simulación a partir de la corriente base: por celda, base (x, z), profundidad y tipo, y cercanía
+ * a tierra (1 junto a orillas y obstáculos, 0 a 24 m o más). Donde no hay geometría (entrada y salida del río) se
+ * copia la base del agua vecina: el agua entra con ella.
+ */
+function buildStatic(flow) {
+  const { nx, nz } = flow;
+  const N = nx * nz;
+  const cell = flow.cellSize;
+  const DRY = 2;
+  const baseX = Float32Array.from(flow.vx), baseZ = Float32Array.from(flow.vz);
+  const filled = new Uint8Array(N);
+  for (let k = 0; k < N; k++) filled[k] = flow.type[k] !== 0 ? 1 : 0;
+  for (let pass = 0; pass < 6; pass++) {
+    const next = filled.slice();
+    for (let k = 0; k < N; k++) {
+      if (filled[k]) continue;
+      const i = k % nx, j = (k / nx) | 0;
+      let sx = 0, sz = 0, n = 0;
+      for (const m of [i > 0 ? k - 1 : -1, i < nx - 1 ? k + 1 : -1, j > 0 ? k - nx : -1, j < nz - 1 ? k + nx : -1]) {
+        if (m < 0 || !filled[m] || flow.type[m] === DRY) continue;
+        sx += baseX[m]; sz += baseZ[m]; n++;
+      }
+      if (n) { baseX[k] = sx / n; baseZ[k] = sz / n; next[k] = 1; }
+    }
+    filled.set(next);
+  }
+  // cercanía a tierra (orillas y obstáculos): 1 junto a ella, 0 a 24 m o más
+  const dry = new Uint8Array(N);
+  for (let k = 0; k < N; k++) dry[k] = flow.type[k] === DRY ? 1 : 0;
+  const dDry = edt2d(dry, nx, nz);
+  const near = new Float32Array(N);
+  for (let k = 0; k < N; k++) near[k] = Math.max(0, 1 - (dDry[k] * cell) / 24);
+  const fixed = new Float32Array(N * 4);
+  for (let k = 0; k < N; k++) {
+    fixed[k * 4] = baseX[k];
+    fixed[k * 4 + 1] = baseZ[k];
+    fixed[k * 4 + 2] = Math.max(flow.depth[k], 0.5);
+    fixed[k * 4 + 3] = flow.type[k];
+  }
+  return { fixed, near };
 }
