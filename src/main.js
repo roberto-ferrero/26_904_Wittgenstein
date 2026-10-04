@@ -207,7 +207,12 @@ controls.update();
 // ---------------------------------------------------------------- Agua
 
 // El agua va en su propio objeto, fácil de sustituir: el río de RealisticRiver1 (crearAguaPlana es la alternativa).
-const agua = mallaAgua ? await crearRioRealista( mallaAgua, datos, { renderer, scene, camera, terreno } ) : null;
+// Las ondas de viento siguen el viento de la vegetación (dirección) y de las nubes (velocidad); `sky` se crea después.
+let sky = null;
+const agua = mallaAgua ? await crearRioRealista( mallaAgua, datos, {
+	renderer, scene, camera, terreno,
+	viento: () => ( { hacia: vegetacion.opciones.vientoHacia, orientacion: sky?.state.orientation ?? 0, velocidad: sky?.clouds.state.windSpeed ?? 0 } ),
+} ) : null;
 
 function volverACamera() {
 	camera.position.copy( posInicial );
@@ -224,7 +229,7 @@ function volverACamera() {
 await ui.step( 'Calculando el cielo y las nubes volumétricas…', 0.45 );
 // Sol manual en la dirección de la escena de Blender (escena_datos.json): elevación 34° y acimut ~307° (noroeste).
 const aSol = haciaSol;
-const sky = await createVolumetricSky1( {
+sky = await createVolumetricSky1( {
 	renderer, scene, camera, sun: sol, hemi,
 	fog: true, // la única niebla de la escena: la perspectiva aérea del cielo (scene.fogNode)
 	settings: {

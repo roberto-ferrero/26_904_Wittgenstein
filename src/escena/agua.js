@@ -16,10 +16,11 @@ import { addRealisticRiver1Gui } from '../RealisticRiver1/gui.js';
 const lineal = ( rgb ) => new THREE.Color().setRGB( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], THREE.LinearSRGBColorSpace );
 
 /**
- * Río con el módulo RealisticRiver1. `entorno` = { renderer, scene, camera, terreno }: el terreno da el lecho y las
- * orillas, y sus rocas (el grupo "Rocas") cuentan como obstáculos donde sobresalen del agua.
+ * Río con el módulo RealisticRiver1. `entorno` = { renderer, scene, camera, terreno, viento }: el terreno da el lecho
+ * y las orillas, y sus rocas (el grupo "Rocas") cuentan como obstáculos donde sobresalen del agua. `viento()` devuelve
+ * { hacia, orientacion, velocidad }: rumbo geográfico hacia el que sopla (°), orientación del escenario (°) y m/s.
  */
-export async function crearRioRealista( mallaOriginal, datos, { renderer, scene, camera, terreno } ) {
+export async function crearRioRealista( mallaOriginal, datos, { renderer, scene, camera, terreno, viento = null } ) {
 
 	const base = lineal( datos.agua.color_lineal );
 	const rocas = terreno.getObjectByName( 'Rocas' );
@@ -40,7 +41,15 @@ export async function crearRioRealista( mallaOriginal, datos, { renderer, scene,
 	return {
 		objeto: rio.object,
 		rio,
-		actualizar( dt ) { rio.update( dt ); },
+		actualizar( dt ) {
+			if ( viento ) {
+				// misma convención que la vegetación y las nubes: rumbo geográfico menos la orientación del escenario
+				const v = viento();
+				const r = THREE.MathUtils.degToRad( v.hacia - v.orientacion );
+				rio.setWind( Math.sin( r ), - Math.cos( r ), v.velocidad );
+			}
+			rio.update( dt );
+		},
 		gui( carpeta ) { addRealisticRiver1Gui( rio, carpeta ); },
 	};
 

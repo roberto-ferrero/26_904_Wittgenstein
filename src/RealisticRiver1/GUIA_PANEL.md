@@ -5,12 +5,17 @@ En el visor está en la carpeta **Agua**. Los controles irán creciendo con cada
 | Control | Rango | Qué hace |
 |---|---|---|
 | color orilla | color | Color del agua donde hay poca profundidad. |
-| color fondo | color | Color del agua en lo hondo (12 m o más). Entre los dos se mezcla según la profundidad. |
+| color fondo | color | Color del agua en lo hondo. Entre los dos se mezcla según la profundidad real. |
+| absorción (m) | 0,2-20 | Cuánta agua hace falta para llegar al color del fondo: más bajo, el color hondo aparece enseguida. |
+| orilla transparente (m) | 0-3 | Profundidad en la que el agua pasa de transparente a opaca junto a la orilla. 0 = borde duro. |
 | rugosidad | 0-1 | 0 = espejo; más alto, reflejos más difusos y brillo del sol más ancho. |
+| reflejos del cielo | 0-3 | Intensidad del reflejo del cielo y las nubes solo en el agua (el control del cielo afecta a toda la escena). |
 | velocidad del río (m/s) | 0-4 | Velocidad media real del agua. Un río así va a 0,5-1,5 m/s. |
 | exageración de la velocidad | 0-10 | Multiplica lo que se ve: desde lejos, la velocidad real parece casi quieta. |
 | tamaño ondas (m) | 2-300 | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |
 | fuerza ondas | 0-1,5 | Cuánto deforman las ondas los reflejos; más donde el agua corre más. |
+| ondas de viento | 0-1,5 | Fuerza de las ondas pequeñas que empuja el viento (crece con la velocidad del viento de las nubes). |
+| tamaño ondas de viento (m) | 1-40 | Metros por repetición de las ondas de viento. |
 | ciclo del flow map (s) | 0,5-12 | Cada cuánto se reinicia cada fase del desplazamiento. Más largo, ondas más estiradas por la corriente; más corto, se nota más el fundido. |
 
 ## Depuración del río

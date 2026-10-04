@@ -16,12 +16,17 @@ export function addRealisticRiver1Gui(river, parent = null) {
 
   gui.addColor(s, 'colorShallow').name('color orilla').onChange(apply);
   gui.addColor(s, 'colorDeep').name('color fondo').onChange(apply);
+  gui.add(s, 'absorption', 0.2, 20, 0.1).name('absorción (m)').onChange(apply);
+  gui.add(s, 'shoreFade', 0, 3, 0.05).name('orilla transparente (m)').onChange(apply);
   gui.add(s, 'roughness', 0, 1, 0.01).name('rugosidad').onChange(apply);
+  gui.add(s, 'reflections', 0, 3, 0.01).name('reflejos del cielo').onChange(apply);
   gui.add(s, 'flowSpeed', 0, 4, 0.05).name('velocidad del río (m/s)').onChange(apply);
   gui.add(s, 'flowBoost', 0, 10, 0.1).name('exageración de la velocidad').onChange(apply);
   gui.add(s, 'rippleSize', 2, 300, 1).name('tamaño ondas (m)').onChange(apply);
   gui.add(s, 'rippleStrength', 0, 1.5, 0.01).name('fuerza ondas').onChange(apply);
   gui.add(s, 'flowCycle', 0.5, 12, 0.1).name('ciclo del flow map (s)').onChange(apply);
+  gui.add(s, 'windRipples', 0, 1.5, 0.01).name('ondas de viento').onChange(apply);
+  gui.add(s, 'windSize', 1, 40, 0.5).name('tamaño ondas de viento (m)').onChange(apply);
 
   // depuración: no se guarda en la URL ni en los conjuntos de configuración
   const fDebug = gui.addFolder('Depuración del río').close();

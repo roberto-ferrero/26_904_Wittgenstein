@@ -12,7 +12,7 @@ y reutilizable, como [VolumetricSky1](../VolumetricSky1/README.md). Plan complet
 | F0. Esqueleto | API fijada (creación, `update(dt)`, `state` + `apply()`, `dispose()`), material propio con el aspecto del agua plana anterior, panel | **Hecha** |
 | F1. Dominio | Lecho, máscara, distancia a la orilla, profundidad y obstáculos horneados en el navegador; vistas de depuración | **Hecha** |
 | F2. Corriente base | Función de corriente con profundidad e islas; normales con flow map | **Hecha** |
-| F3. Superficie | Color por profundidad, orilla transparente, Fresnel, viento | Pendiente |
+| F3. Superficie | Color por profundidad, orilla transparente, reflejos del cielo regulables, ondas de viento | **Hecha** |
 | F4. Simulación viva | Remolinos (Stable Fluids 2D en compute) | Pendiente |
 | F5. Espuma | Espuma advectada con fuentes físicas | Pendiente |
 | F6. Obstáculos en caliente | `addObstacle` / `removeObstacle` | Pendiente |
@@ -55,7 +55,7 @@ renderer.setAnimationLoop(() => {
 | Opción | Por defecto | Qué hace |
 |---|---|---|
 | `renderer`, `scene`, `camera` | — | Obligatorias. |
-| `water` | — | Obligatoria. Malla de la lámina: define la cota, la extensión y los atributos por vértice. Si trae `_profundidad` (0 orilla, 1 hondo), el color se mezcla con él. |
+| `water` | — | Obligatoria. Malla de la lámina: define la cota y la extensión. El color sale de la profundidad real del dominio, así que no necesita atributos. |
 | `terrain` | `scene` | Objeto o lista de objetos que forman el lecho y las orillas. |
 | `obstacles` | `[]` | Objetos, grupos o `InstancedMesh` que cuentan como obstáculos donde sobresalen de la lámina y el terreno de debajo quedaría bajo el agua. Se excluyen del terreno. |
 | `cellSize` | `1` | Metros por celda del dominio. |
@@ -76,6 +76,7 @@ renderer.setAnimationLoop(() => {
 | `domain` | Dominio horneado (ver más abajo). |
 | `flow` | Corriente base: `vx`, `vz` (relativas, media 1), `psi`, `sample(x, z)`, `texture` y `stats`. |
 | `maps` | Texturas para shaders u otros efectos: `{ domain }`. |
+| `setWind(x, z, speed)` | Viento sobre el agua para las ondas de viento: dirección hacia la que sopla (ejes de la escena) y m/s. Se puede llamar en cada fotograma. |
 | `rebuild()` | Vuelve a hornear el dominio y la corriente (tras mover el terreno o cambiar obstáculos). Devuelve las estadísticas del dominio. |
 | `debugViews` | Nombres de las vistas de depuración. |
 | `dispose()` | Quita el río de la escena y libera su material. La geometría sigue siendo de quien la cargó. |
@@ -85,13 +86,18 @@ renderer.setAnimationLoop(() => {
 | Clave | Por defecto | Qué es |
 |---|---|---|
 | `enabled` | `true` | Río visible y actualizándose. |
-| `colorShallow`, `colorDeep` | `0x9a9db5`, `0x7d8099` | Color (sRGB) en la orilla y en lo hondo. |
+| `colorShallow`, `colorDeep` | `0x9a9db5`, `0x7d8099` | Color (sRGB) con poca agua y en lo hondo. |
+| `absorption` | `4` | Metros de agua para llegar a ~63 % del color de lo hondo (Beer-Lambert). |
+| `shoreFade` | `1.2` | Metros de profundidad en los que la lámina pasa de transparente a opaca en la orilla. |
 | `roughness` | `0.07` | Rugosidad de la lámina. |
+| `reflections` | `1` | Intensidad del reflejo del cielo (`scene.environment`) solo en el agua. |
 | `flowSpeed` | `1` | Velocidad media real del río (m/s). |
 | `flowBoost` | `2` | Exageración visual: lo que se ve va a `flowSpeed × flowBoost`. |
 | `rippleSize` | `90` | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |
 | `rippleStrength` | `0.3` | Fuerza del mapa de normales; sube hasta ×1,35 donde el agua corre más. |
 | `flowCycle` | `4` | Segundos por ciclo del flow map: más largo, más recorrido de cada fase y más estiramiento. |
+| `windRipples` | `0.25` | Fuerza de las ondas de viento a 10 m/s (crece con el viento hasta ×1,5). |
+| `windSize` | `7` | Metros por repetición de las ondas de viento. |
 | `debugView` | `'Ninguna'` | Vista de depuración: `'Orilla (distancia con signo)'`, `'Profundidad'`, `'Obstáculos'`, `'Lecho (altura)'`, `'Corriente base (velocidad)'` o `'Corriente base frente a _flujo'`. Pinta el mapa sobre la lámina sin luz. |
 
 ## Dominio (F1)
@@ -143,11 +149,25 @@ El mapa de normales se desplaza con la corriente en dos fases desfasadas medio c
 reinicio. Cada punto lleva un desfase de fase con ruido, así que no hay latido común. Hay dos capas (90 m y 33 m por
 repetición), la fina algo más rápida, y la fuerza crece con la rapidez local.
 
+## Superficie (F3)
+
+- **Color por profundidad**: `mix(colorShallow, colorDeep, 1 − e^(−profundidad / absorption))` con la profundidad
+  real del dominio (antes era el atributo `_profundidad`, que saturaba a 12 m y venía cada 3 m).
+- **Orilla transparente**: la opacidad sube de 0 a 1 en los primeros `shoreFade` metros de agua. Se ve el lecho en
+  los bajíos, no hay línea dura contra el terreno y la lámina desaparece donde pasa bajo la orilla. El material es
+  transparente (se dibuja después de lo opaco).
+- **Ondas de viento**: tercera capa del mapa de normales que se desplaza con el viento (`setWind`), a un 4 % de su
+  velocidad (como mucho 1,2 m/s), sin flow map porque el viento es uniforme.
+- **Reflejos del cielo**: el material toma `scene.environment` como `envMap` propio (en los materiales de nodos
+  `envMapIntensity` solo actúa sobre el `envMap` del material), así que `reflections` regula el reflejo solo en el
+  agua. Si el cielo rehace el entorno, el río lo vuelve a tomar en `update`.
+
 ## Integración con el cielo
 
 La lámina es un `MeshStandardNodeMaterial`, así que recibe sin código propio la perspectiva aérea y la niebla en capa
-de VolumetricSky1 (`scene.fogNode`), los reflejos del cielo y las nubes (`scene.environment`) y el sol con sus
-sombras.
+de VolumetricSky1 (`scene.fogNode`), los reflejos del cielo y las nubes (`scene.environment`, regulables con
+`reflections`) y el sol con sus sombras. En el visor, las ondas de viento siguen la dirección del viento de la
+vegetación y la velocidad del viento de las nubes, con la orientación del escenario.
 
 ## Rendimiento
 
@@ -158,8 +178,9 @@ Medido en el visor de la escena v10 a 1920 × 1080 con la GPU sincronizada (`awa
 | "Camera" | 9,8-11 ms | 9,4-10,8 ms |
 | Aérea | 8,6 ms | 8,4 ms |
 
-Por fotograma el río es un solo dibujo de 44.322 triángulos. Con el flow map (cuatro lecturas del mapa de normales,
-una de la corriente y un ruido) cuesta ~0,4 ms desde "Camera"; la variación entre medidas es de ±0,3 ms. Al cargar
+Por fotograma el río es un solo dibujo de 44.322 triángulos. Con el flow map, las ondas de viento y el color por
+profundidad (cinco lecturas del mapa de normales, una de la corriente, una del dominio y un ruido) cuesta ~0,4-0,6 ms
+desde "Camera"; la variación entre medidas es de ±0,3 ms. Al cargar
 se hace una vez el horneado del dominio (0,5-0,9 s) y la corriente base (~1,3 s), con el bucle del visor en marcha.
 
 ## Archivos

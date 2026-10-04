@@ -1,0 +1,13 @@
+{
+  "nombre": "Río de la ilustración (calmo y con reflejos)",
+  "descripcion": "Agua lila pálida, casi un espejo, como el río de Ian Miller: rugosidad baja, más reflejo del cielo, ondas y viento suaves y la corriente poco exagerada. El resto, valores de arranque. RealisticRiver1 F3, 04/10/2026.",
+  "valores": {
+    "agua.color-orilla": 12038900,
+    "agua.color-fondo": 9078440,
+    "agua.rugosidad": 0.04,
+    "agua.reflejos-del-cielo": 1.35,
+    "agua.exageracion-de-la-velocidad": 1.5,
+    "agua.fuerza-ondas": 0.16,
+    "agua.ondas-de-viento": 0.12
+  }
+}

@@ -13,6 +13,7 @@ import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
  * - F1: dominio horneado al crear el río (domain.js): lecho, agua, profundidad, distancia a la orilla y obstáculos,
  *   con vistas de depuración (debug.js).
  * - F2: corriente base (baseflow.js) y normales desplazadas con ella (flow map, surface.js).
+ * - F3: color por profundidad real, orilla transparente, ondas de viento y reflejos del cielo regulables.
  * Simulación, espuma y obstáculos en caliente llegan en las fases siguientes sin cambiar esta API.
  *
  * Uso mínimo:
@@ -24,10 +25,13 @@ import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
 /** Valores por defecto de `state`; cualquiera se puede cambiar con `settings` al crear el río. */
 export const RIVER_DEFAULTS = {
   enabled: true,
-  // color (sRGB) en la orilla y en lo hondo; se mezclan con el atributo `_profundidad` de la lámina (0-1)
+  // color (sRGB) en la orilla y en lo hondo; se mezclan con la profundidad real (absorción de Beer-Lambert)
   colorShallow: 0x9a9db5,
   colorDeep: 0x7d8099,
+  absorption: 4, // metros de agua para llegar a ~63 % del color de lo hondo
+  shoreFade: 1.2, // metros de profundidad en los que la lámina pasa de transparente a opaca en la orilla
   roughness: 0.07,
+  reflections: 1, // intensidad del reflejo del cielo (scene.environment) en el agua
   // corriente base: velocidad media real del río y exageración visual (lo que se ve va a flowSpeed × flowBoost)
   flowSpeed: 1, // m/s
   flowBoost: 2,
@@ -35,6 +39,9 @@ export const RIVER_DEFAULTS = {
   rippleSize: 90, // metros por repetición de la capa grande (la fina es 0,37 veces); a 400 m de la cámara lo pequeño se pierde
   rippleStrength: 0.3,
   flowCycle: 4, // segundos por ciclo del flow map: más largo, más estela; más corto, menos estiramiento
+  // ondas de viento (con setWind): fuerza a 10 m/s de viento y metros por repetición
+  windRipples: 0.25,
+  windSize: 7,
   // depuración: una de las claves de DEBUG_VIEWS
   debugView: 'Ninguna',
 };
@@ -73,7 +80,7 @@ export async function createRealisticRiver1({
   const flowOptions = { cellSize: flowCellSize, direction: [flowDirection[0], flowDirection[2]] };
   let flow = solveBaseFlow(domain, flowOptions);
 
-  const surface = createSurface(geometry, state, normalTexture ?? water.material?.normalMap ?? null, flow);
+  const surface = createSurface(state, normalTexture ?? water.material?.normalMap ?? null, domain, flow);
   const object = new THREE.Mesh(geometry, surface.material);
   object.name = 'RealisticRiver1';
   water.matrixWorld.decompose(object.position, object.quaternion, object.scale);
@@ -97,7 +104,7 @@ export async function createRealisticRiver1({
     object.removeFromParent();
     domain = await bakeDomain({ renderer, water: object, terrain: terrainList, obstacles: obstacleList, cellSize, margin, previous: domain });
     flow = solveBaseFlow(domain, { ...flowOptions, previous: flow });
-    surface.setFlow(flow);
+    surface.setMaps(domain, flow);
     debug.refresh();
     scene.add(object);
     object.visible = visible;
@@ -120,10 +127,15 @@ export async function createRealisticRiver1({
     /** Un paso del río. Llamar en cada fotograma antes de `renderer.render`. */
     update(dt) {
       if (!state.enabled) return;
-      surface.update(dt);
+      surface.update(dt, scene);
     },
     /** Pasa `state` al río tras cambiarlo a mano. */
     apply,
+    /**
+     * Viento sobre el agua para las ondas de viento: dirección hacia la que sopla en ejes de la escena (x, z) y
+     * velocidad en m/s. Se puede llamar en cada fotograma.
+     */
+    setWind: surface.setWind,
     rebuild,
     /** Quita el río de la escena y libera sus materiales y texturas (la geometría sigue siendo de quien la cargó). */
     dispose() {

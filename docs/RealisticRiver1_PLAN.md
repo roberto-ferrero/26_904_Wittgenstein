@@ -4,7 +4,7 @@ Río con corriente visible para el visor de la escena v10 (Three.js r186, `WebGP
 cauce, remolinos en las márgenes y detrás de los obstáculos, y espuma que deja ver el comportamiento hidráulico. Se
 hace como módulo autocontenido y reutilizable, igual que [VolumetricSky1](../src/VolumetricSky1/README.md).
 
-Estado: **aprobado; en construcción**. Hecho: F0, F1, F2.
+Estado: **aprobado; en construcción**. Hecho: F0, F1, F2, F3.
 
 ---
 
@@ -235,7 +235,7 @@ Cada fase deja el visor funcionando, con captura desde "Camera" y aérea, y medi
 | **F0. Esqueleto** ✅ | Carpeta del módulo, adaptador en `src/escena/agua.js`, material que reproduce el agua actual, panel vacío y medición de partida. | El visor igual que hoy pero con el agua servida por RealisticRiver1. |
 | **F1. Dominio** ✅ | Vista cenital, máscara, profundidad, distancia a la orilla, obstáculos desde las 520 rocas. Vistas de depuración. | Panel "Depuración" que pinta cada mapa sobre el agua. |
 | **F2. Corriente base** ✅ | Función de corriente con profundidad e islas, velocidad, vista LIC/flechas, comparación con `_flujo_*`. Primer material con normales desplazadas por el flow map. | El río ya fluye hacia la cámara, rodea las rocas y se acelera en los estrechamientos. Modo de calidad "bajo" terminado. |
-| **F3. Superficie** | Material completo: flow map sin latido, color por profundidad, orilla transparente, Fresnel con el entorno del cielo, viento, integración con la niebla. | Agua con aspecto final sin simulación viva; preset "Ilustración". |
+| **F3. Superficie** ✅ | Material completo: flow map sin latido, color por profundidad, orilla transparente, Fresnel con el entorno del cielo, viento, integración con la niebla. | Agua con aspecto final sin simulación viva; preset "Ilustración". |
 | **F4. Simulación viva** | Stable Fluids en compute con BFECC, vorticidad, proyección ponderada, rozamiento, paso fijo e interpolación. | Remolinos detrás del promontorio de la torre y en las orillas, visibles en la vista de vorticidad y en el agua. |
 | **F5. Espuma** | Advección, fuentes (cizalla, convergencia, obstáculos, orilla, bajíos), textura y umbral. | Líneas de espuma que dibujan la corriente; control de carácter de espejo a hidráulico. |
 | **F6. Obstáculos en caliente** | `addObstacle` / `removeObstacle`, re-horneado incremental, botón de piedra de prueba en el panel. | Una piedra añadida en ejecución genera estela y espuma sin recargar. Guía para las piedras futuras. |
