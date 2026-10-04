@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { dot, float, max, mix, mx_noise_float, normalWorld, smoothstep, uniform, vec3 } from 'three/tsl';
 import { createAtmosphere } from './atmosphere.js';
-import { createClouds } from './clouds.js';
+import { CLOUD_MORPHOLOGIES, createClouds } from './clouds.js';
 import { directionFromAltAz, equatorialToWorld, moonIllumination, moonPosition, sunPosition, sunriseSunset } from './astro.js';
 
 /**
@@ -60,6 +60,7 @@ export const SKY_DEFAULTS = {
   multiScattering: 1,
   mieDirectionalG: 0.8,
   skyBrightness: 1,
+  skyColor: '#ffffff', // color base del cielo (blanco = el color físico); se normaliza para no cambiar el brillo
   horizonFill: true, // bajo el horizonte, el color del horizonte (si no, el suelo del planeta, casi negro)
   // luz de la escena
   sunStrength: 3.2,
@@ -197,6 +198,7 @@ export async function createVolumetricSky1({
   const ambientNight = new THREE.Color(0.012, 0.016, 0.03);
   const rot = new THREE.Matrix4();
   const rotY = new THREE.Matrix4();
+  const skyTint = new THREE.Color(1, 1, 1);
   const tmpV = new THREE.Vector3();
 
   /** Radio de las cúpulas: detrás de todo lo opaco y dentro del far de la cámara. */
@@ -257,6 +259,14 @@ export async function createVolumetricSky1({
     // luz del sol: color por transmitancia y fuerza por altura (se apaga bajo el horizonte)
     atm.transmittance(Math.max(s.altitude, -1), sunColor);
     const sunUp = smooth(-1.5, 4, s.altitude);
+    // color base del cielo: el elegido, normalizado a luminancia 1 (cambia el tono, no el brillo)
+    skyTint.set(state.skyColor);
+    const lum = 0.2126 * skyTint.r + 0.7152 * skyTint.g + 0.0722 * skyTint.b;
+    skyTint.multiplyScalar(1 / Math.max(lum, 0.05));
+    if (!atm.uniforms.tint.value.equals(skyTint)) {
+      atm.uniforms.tint.value.copy(skyTint);
+      lastEnvSun.set(0, -2, 0); // rehacer los reflejos con el color nuevo
+    }
     if (state.enabled && atm.update(sunDir, state.skyBrightness, sunColor)) {
       lastEnvSun.set(0, -2, 0); // LUT nueva: rehacer también el entorno
     }
@@ -271,7 +281,8 @@ export async function createVolumetricSky1({
       light.sunIntensity = state.cloudLight * state.moonStrength * 0.12 * ill.fraction * smooth(-2, 15, m.altitude);
     }
     light.ambient.copy(ambientNight).lerp(ambientDay, info.dayFactor).multiplyScalar(state.cloudLight * 0.9)
-      .lerp(tmpColor.copy(sunColor).multiplyScalar(0.5 * state.cloudLight), smooth(20, 0, s.altitude) * info.dayFactor * 0.5);
+      .lerp(tmpColor.copy(sunColor).multiplyScalar(0.5 * state.cloudLight), smooth(20, 0, s.altitude) * info.dayFactor * 0.5)
+      .multiply(skyTint); // la luz del cielo sobre las nubes toma el color base
 
     // perspectiva aérea
     const ap = atm.aerial;
@@ -295,7 +306,7 @@ export async function createVolumetricSky1({
       moonLight.intensity = state.moonStrength * ill.fraction * smooth(-2, 10, m.altitude) * night;
       if (hemi) {
         hemi.intensity = state.ambientStrength * (0.08 + 0.92 * info.dayFactor);
-        hemi.color.setRGB(0.55 + 0.25 * sunColor.r, 0.65 + 0.2 * sunColor.g, 0.85 + 0.1 * sunColor.b);
+        hemi.color.setRGB(0.55 + 0.25 * sunColor.r, 0.65 + 0.2 * sunColor.g, 0.85 + 0.1 * sunColor.b).multiply(skyTint);
       }
       scene.background = null;
       if (environment) scene.environmentIntensity = state.environmentIntensity;
@@ -379,6 +390,15 @@ export async function createVolumetricSky1({
     /** Aplica los cambios de las nubes (`sky.clouds.state`) y rehace el entorno. */
     applyClouds,
     renderer,
+    cloudMorphologies: Object.keys(CLOUD_MORPHOLOGIES),
+    /** Aplica una morfología de nubes de CLOUD_MORPHOLOGIES (cambia cobertura, densidad, tipo, base, grosor y tamaño). */
+    setCloudMorphology(name) {
+      const m = CLOUD_MORPHOLOGIES[name];
+      if (!m) return;
+      Object.assign(clouds.state, m);
+      clouds.state.morphology = name;
+      applyClouds();
+    },
     /** Vuelve a aplicar todo (cielo, nubes, LUT de la atmósfera y entorno) y empieza las nubes sin historial. */
     refresh() {
       atmKey = '';

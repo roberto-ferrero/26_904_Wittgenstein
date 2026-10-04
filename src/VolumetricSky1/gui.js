@@ -17,7 +17,10 @@ export function addVolumetricSky1Gui(sky, parent = null) {
   const gui = parent ?? new GUI({ title: 'VolumetricSky1', width: 368 });
   const s = sky.state;
   const c = sky.clouds.state;
+  // mover un control de forma de las nubes deja la morfología en "Personalizada"
+  let morphCtl = null;
   const applyClouds = () => sky.applyClouds();
+  const applyShape = () => { c.morphology = 'Personalizada'; morphCtl?.updateDisplay(); sky.applyClouds(); };
 
   // ------------------------------------------------------------------ cielo e iluminación
   const fSky = gui.addFolder('Cielo e iluminación');
@@ -49,6 +52,7 @@ export function addVolumetricSky1Gui(sky, parent = null) {
   fSky.add(s, 'ambientStrength', 0, 3, 0.05).name('Luz ambiente');
   fSky.add(s, 'environmentIntensity', 0, 3, 0.01).name('Reflejos del cielo');
   fSky.add(s, 'skyBrightness', 0.1, 4, 0.05).name('Brillo del cielo');
+  fSky.addColor(s, 'skyColor').name('Color base del cielo');
   fSky.add(s, 'exposure', 0.2, 3, 0.01).name('Exposición');
   showMode();
 
@@ -60,12 +64,18 @@ export function addVolumetricSky1Gui(sky, parent = null) {
   fAtm.add(s, 'aerialStrength', 0, 40, 0.5).name('Fuerza de la perspectiva aérea');
   const fClouds = fAtm.addFolder('Nubes');
   fClouds.add(c, 'enabled').name('Nubes').onChange(applyClouds);
-  fClouds.add(c, 'coverage', 0, 1, 0.01).name('Cobertura').onChange(applyClouds);
-  fClouds.add(c, 'density', 0.002, 0.15, 0.001).name('Densidad').onChange(applyClouds);
-  fClouds.add(c, 'type', 0, 1, 0.01).name('Tipo (cúmulo → estrato)').onChange(applyClouds);
-  fClouds.add(c, 'base', 200, 6000, 50).name('Altitud de la base (m)').onChange(applyClouds);
-  fClouds.add(c, 'thickness', 100, 4000, 50).name('Grosor (m)').onChange(applyClouds);
-  fClouds.add(c, 'scale', 0.2, 4, 0.05).name('Tamaño de las formaciones').onChange(applyClouds);
+  morphCtl = fClouds.add(c, 'morphology', [...sky.cloudMorphologies, 'Personalizada']).name('Morfología')
+    .onChange((name) => {
+      if (name === 'Personalizada') return;
+      sky.setCloudMorphology(name);
+      fClouds.controllersRecursive().forEach((ctl) => ctl.updateDisplay());
+    });
+  fClouds.add(c, 'coverage', 0, 1, 0.01).name('Cobertura').onChange(applyShape);
+  fClouds.add(c, 'density', 0.002, 0.15, 0.001).name('Densidad').onChange(applyShape);
+  fClouds.add(c, 'type', 0, 1, 0.01).name('Tipo (cúmulo → estrato)').onChange(applyShape);
+  fClouds.add(c, 'base', 200, 6000, 50).name('Altitud de la base (m)').onChange(applyShape);
+  fClouds.add(c, 'thickness', 100, 4000, 50).name('Grosor (m)').onChange(applyShape);
+  fClouds.add(c, 'scale', 0.2, 4, 0.05).name('Tamaño de las formaciones').onChange(applyShape);
   fClouds.add(c, 'windSpeed', 0, 60, 0.5).name('Viento (m/s)');
   fClouds.add(c, 'windDirection', 0, 360, 1).name('Viento hacia (° desde el norte)');
   fClouds.add(c, 'steps', 8, 128, 1).name('Calidad (pasos)').onChange(applyClouds);

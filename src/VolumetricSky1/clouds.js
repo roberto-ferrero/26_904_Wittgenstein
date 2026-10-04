@@ -30,6 +30,21 @@ const U = (v) => uniform(v).setGroup(renderGroup);
 const NOISE_URL = new URL('./textures/cloud_noise_64.bin', import.meta.url);
 const WEATHER_URL = new URL('./textures/cloud_weather_256.bin', import.meta.url);
 
+/**
+ * Morfologías de nubes: valores de cobertura, densidad, tipo (0 cúmulo, 1 estrato), base y grosor (m) y tamaño
+ * de las formaciones. Se aplican con `sky.setCloudMorphology(nombre)` o desde el panel.
+ */
+export const CLOUD_MORPHOLOGIES = {
+  'Cúmulos (por defecto)': { coverage: 0.45, density: 0.02, type: 0.15, base: 1500, thickness: 1400, scale: 1 },
+  'Cúmulos de buen tiempo': { coverage: 0.3, density: 0.018, type: 0.1, base: 1300, thickness: 900, scale: 0.8 },
+  'Cúmulos de desarrollo': { coverage: 0.55, density: 0.04, type: 0.05, base: 1200, thickness: 2800, scale: 1.4 },
+  'Cumulonimbos (tormenta)': { coverage: 0.6, density: 0.08, type: 0, base: 900, thickness: 4000, scale: 2.2 },
+  'Estratocúmulos': { coverage: 0.7, density: 0.03, type: 0.55, base: 1000, thickness: 800, scale: 1.6 },
+  'Estratos (cielo gris)': { coverage: 1, density: 0.06, type: 1, base: 600, thickness: 1000, scale: 2.5 },
+  'Altocúmulos (aborregado)': { coverage: 0.5, density: 0.02, type: 0.4, base: 4000, thickness: 600, scale: 0.4 },
+  'Despejado': { coverage: 0 },
+};
+
 export async function createClouds(renderer, scene, settings = {}) {
   const [noiseBuf, weatherBuf] = await Promise.all([
     fetch(NOISE_URL).then((r) => r.arrayBuffer()),
@@ -49,6 +64,7 @@ export async function createClouds(renderer, scene, settings = {}) {
 
   const state = {
     enabled: true,
+    morphology: 'Cúmulos (por defecto)', // nombre de CLOUD_MORPHOLOGIES, o 'Personalizada'
     coverage: 0.45, // 0 = despejado, 1 = cubierto
     density: 0.02, // coeficiente de extinción (1/m) en lo más denso
     base: 1500, // altitud de la base (m)

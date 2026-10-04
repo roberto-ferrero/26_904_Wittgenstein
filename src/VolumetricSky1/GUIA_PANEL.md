@@ -36,6 +36,7 @@ recalcula el cielo, rehace los reflejos y vuelve a empezar las nubes desde cero.
 | Luz ambiente | Intensidad de la luz difusa del cielo (luz hemisférica): cuánto se ven las zonas en sombra. |
 | Reflejos del cielo | Intensidad del mapa de entorno: lo que reflejan el agua y las superficies y la luz indirecta que da el cielo con sus nubes. |
 | Brillo del cielo | Multiplica la luminosidad del cielo visible y, con ella, la de lo que tiñe la perspectiva aérea y la niebla. No cambia la luz del sol. |
+| Color base del cielo | Tiñe el cielo con el color elegido sin cambiar su brillo (blanco = el color físico). El tinte llega a todo lo que toma su luz del cielo: la cúpula, los reflejos, la luz ambiente, la perspectiva aérea, la niebla y la luz difusa de las nubes. Los tonos suaves (melocotón, verde agua, lavanda) dan un aire de ilustración sin romper la luz. |
 | Exposición | Exposición de la cámara (tone mapping AgX): aclara u oscurece toda la imagen. |
 
 ## Atmósfera y nubes
@@ -52,6 +53,7 @@ recalcula el cielo, rehace los reflejos y vuelve a empezar las nubes desde cero.
 | Control | Qué hace |
 |---|---|
 | Nubes | Enciende o apaga las nubes volumétricas. |
+| Morfología | Tipo de cielo de nubes ya ajustado: cúmulos (por defecto), cúmulos de buen tiempo, cúmulos de desarrollo, cumulonimbos (tormenta), estratocúmulos, estratos (cielo gris), altocúmulos (aborregado) o despejado. Cambia a la vez cobertura, densidad, tipo, base, grosor y tamaño; si luego mueves uno de esos controles, pasa a "Personalizada". |
 | Cobertura | Fracción del cielo cubierta: 0 = despejado, 1 = cubierto. |
 | Densidad | Lo opacas que son por dentro: bajas, nubes finas y translúcidas; altas, nubes compactas con bases oscuras. |
 | Tipo (cúmulo → estrato) | 0 = cúmulos con mucho desarrollo vertical; 1 = estratos, capas planas y bajas. |
@@ -73,3 +75,18 @@ debajo. La ilumina el cielo igual que a la perspectiva aérea, así que su color
 | Cota baja (m) | Altura (eje Y de la escena) donde empieza la capa por abajo. |
 | Cota alta (m) | Altura donde termina la capa por arriba. Con la cota baja bajo el suelo y la alta en el agua, es una nieblina pegada al río. Con las dos a media ladera, es un banco de niebla que corta las colinas. |
 | Transición (m) | Distancia en la que la niebla se desvanece por encima de la cota alta y por debajo de la baja. Pequeña: borde nítido. Grande: niebla que se difumina poco a poco con la altura. |
+
+## Receta: niebla baja con nubes nítidas
+
+La perspectiva aérea y la niebla en capa solo actúan sobre la escena, no sobre el cielo ni las nubes. Para tener
+niebla pegada al valle sin velar el cielo:
+
+| Control | Valor | Por qué |
+|---|---|---|
+| Niebla en capa › Densidad | 0,006 | Niebla espesa dentro de la capa. |
+| Niebla en capa › Cota baja / Cota alta | −20 / 12 m | La capa va del suelo a 10 m sobre el río (en 26_904 el agua está a 1,9 m). |
+| Niebla en capa › Transición | 8 m | Borde superior definido: las torres y las laderas salen limpias de la niebla. |
+| Atmósfera › Fuerza de la perspectiva aérea | 1,5 | Poco velo general, para que lo que queda fuera de la niebla se vea nítido. |
+| Atmósfera › Turbidez | 2 | Cielo azul y limpio, sin halo lechoso. |
+| Nubes › Densidad | 0,04 | Nubes más compactas y con bordes definidos. |
+| Nubes › Calidad (pasos) | 64 | Bordes de nube más limpios (algo más de coste de GPU). |

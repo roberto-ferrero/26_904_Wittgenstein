@@ -74,6 +74,8 @@ export function createAtmosphere(renderer) {
     ms: U(1),
     sunE: U(22),
     brightness: U(1),
+    // color base del cielo (multiplica la radiancia; normalizado a luminancia 1 en JS): cúpula, entorno y perspectiva aérea
+    tint: U(new THREE.Color(1, 1, 1)),
     sunDiscColor: U(new THREE.Color(1, 1, 1)),
     showSun: U(1),
     // 1 = bajo el horizonte se repite el color del horizonte (escenas con suelo finito, sin mar hasta el
@@ -170,7 +172,7 @@ export function createAtmosphere(renderer) {
     const xv0 = sign(el).mul(sqrt(abs(el).div(Math.PI / 2)));
     const xv = mix(xv0, max(xv0, 0.0), u.horizonFill);
     const lutUV = vec2(rel.div(Math.PI), xv.mul(0.5).add(0.5));
-    return texture(lutRT.texture, lutUV).rgb.mul(u.brightness);
+    return texture(lutRT.texture, lutUV).rgb.mul(u.brightness).mul(u.tint);
   };
 
   // ------------------------------------------------------------------ cúpula de cielo
