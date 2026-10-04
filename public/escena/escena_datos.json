@@ -1,0 +1,199 @@
+{
+  "unidades": "1 unidad = 1 m; coordenadas Three.js (Y arriba). Blender (x, y, z) → Three.js (x, z, -y)",
+  "terreno": {
+    "extension_m": [
+      1000,
+      1500
+    ],
+    "x": [
+      -500,
+      500
+    ],
+    "z": [
+      -1000,
+      500
+    ],
+    "cota_agua_y": 1.9,
+    "altura_min": -10.94,
+    "altura_max": 329.5,
+    "uv0": "planar: u = (x + 500) / 1000, v = (500 - z) / 1500 (el norte, -Z, arriba en las imágenes)",
+    "uv1": "baldosa de detalle cada 8 m"
+  },
+  "zonas_png": {
+    "archivo": "zonas.png",
+    "resolucion": [
+      1024,
+      1536
+    ],
+    "canales": {
+      "R": "bosque (densidad 0-1)",
+      "G": "pradera",
+      "B": "roca / escarpe",
+      "A": "orilla (banda de 0 a ~12 m del agua)"
+    },
+    "mapeo": "píxel (0,0) = esquina noroeste (x = -500, z = -1000 en Three.js); col = (x + 500) / 1000 · 1023, fila = (z + 1000) / 1500 · 1535"
+  },
+  "atributos_malla_terreno": [
+    "_bosque",
+    "_pradera",
+    "_roca",
+    "_orilla"
+  ],
+  "piezas": {
+    "Castillo": {
+      "glb": "castillo_v4/castillo_v4_lowpoly.glb",
+      "posicion": [
+        50.166,
+        -11.64,
+        -208.693
+      ],
+      "escala": 1.9583,
+      "rotacion_y_grados": 0.0,
+      "oculto": false
+    },
+    "Torre": {
+      "glb": "torre/torre_lowpoly.glb",
+      "posicion": [
+        -42.95,
+        7.982,
+        45.116
+      ],
+      "escala": 1.0,
+      "rotacion_y_grados": 0.0,
+      "oculto": false
+    },
+    "Arbol": {
+      "glb": "arbol/arbol.glb",
+      "posicion": [
+        102.512,
+        41.297,
+        285.997
+      ],
+      "escala": 1.0,
+      "rotacion_y_grados": 0.0,
+      "oculto": true
+    }
+  },
+  "camara_roberto": {
+    "posicion": [
+      99.814,
+      51.019,
+      311.995
+    ],
+    "mira_hacia": [
+      -0.223,
+      0.029,
+      -0.974
+    ],
+    "fov_vertical_grados": 22.9,
+    "lente_mm": 50.0
+  },
+  "iluminacion": {
+    "sol": {
+      "tipo": "DirectionalLight",
+      "color_lineal": [
+        1.0,
+        0.965,
+        0.92
+      ],
+      "intensidad_blender_W_m2": 4.2,
+      "intensidad_threejs_sugerida": 3.0,
+      "direccion_hacia_el_sol": [
+        -0.66,
+        0.56,
+        -0.5
+      ],
+      "posicion_sugerida": [
+        -346.158,
+        336.134,
+        -510.12
+      ],
+      "objetivo": [
+        50,
+        0,
+        -210
+      ],
+      "elevacion_grados": 34.1
+    },
+    "hemisferica": {
+      "tipo": "HemisphereLight",
+      "cielo_lineal": [
+        0.2,
+        0.27,
+        0.74
+      ],
+      "suelo_lineal": [
+        0.33,
+        0.37,
+        0.31
+      ],
+      "intensidad_sugerida": 1.1
+    },
+    "cielo": {
+      "cenit": [
+        0.2,
+        0.27,
+        0.74
+      ],
+      "horizonte": [
+        0.86,
+        0.86,
+        0.95
+      ],
+      "bajo_horizonte": [
+        0.33,
+        0.37,
+        0.31
+      ],
+      "panoramica": "textures/cielo_equirect.jpg (equirectangular, centro = -Z de Three.js)"
+    },
+    "niebla": {
+      "tipo": "FogExp2",
+      "color_lineal": [
+        0.8,
+        0.8,
+        0.9
+      ],
+      "densidad_blender": 0.0005,
+      "densidad_threejs_FogExp2": 0.0007
+    },
+    "bruma_baja": {
+      "densidad_en_agua": 0.0035,
+      "altura_caida_m": 11.0,
+      "formula": "densidad(y) = densidad_en_agua * exp(-(y - cota_agua) / altura_caida)"
+    },
+    "tone_mapping": "AgX (Three.js: renderer.toneMapping = THREE.AgXToneMapping)"
+  },
+  "agua": {
+    "color_lineal": [
+      0.3,
+      0.32,
+      0.42
+    ],
+    "rugosidad": 0.07,
+    "atributos": {
+      "_profundidad": "0 orilla, 1 a 12 m o más",
+      "_flujo_x/_flujo_z": "dirección de la corriente (unitaria, Three.js)",
+      "_velocidad": "0-1 (máxima en el centro y en lo hondo)",
+      "_a_lo_largo": "metros desde la entrada norte"
+    },
+    "uv_cauce": "TEXCOORD_1: u = través (0 orilla izquierda, 1 derecha), v = metros a lo largo / 40",
+    "sentido": "de norte (-Z) a sur (+Z)"
+  },
+  "camara": "escena_completa.glb incluye la cámara 'Camera' (la de Roberto)",
+  "rocas": {
+    "instancias": 520,
+    "nota": "EXT_mesh_gpu_instancing: GLTFLoader crea InstancedMesh"
+  },
+  "triangulos": {
+    "terreno": 125000,
+    "corte": 2500,
+    "agua": 44322,
+    "rocas_instanciadas": 37000,
+    "rocas_mallas_unicas": 1226,
+    "piezas": 86253,
+    "vegetacion_lod0": 1405271,
+    "total_escena": 1700346,
+    "vegetacion_lod1": 557738
+  }
+}

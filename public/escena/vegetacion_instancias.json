@@ -1,0 +1,138 @@
+{
+  "formato": "6 float32 por instancia: x, y, z (Three.js, metros), giro alrededor de Y (rad), escala, variante (índice en 'variantes')",
+  "mallas": "vegetacion.glb (LOD0) y vegetacion_lod1.glb (LOD1): una malla por variante, nombres <Especie>_<A|B|C>",
+  "especies": {
+    "Abeto": {
+      "desde_byte": 0,
+      "cuantas": 284,
+      "radio_copa_m": 2.4,
+      "altura_m": 18.0,
+      "variantes": [
+        "Abeto_A",
+        "Abeto_B"
+      ],
+      "triangulos_lod0": [
+        58,
+        58
+      ],
+      "triangulos_lod1": [
+        20,
+        20
+      ]
+    },
+    "Arbusto": {
+      "desde_byte": 6816,
+      "cuantas": 9658,
+      "radio_copa_m": 1.8,
+      "altura_m": 1.8,
+      "variantes": [
+        "Arbusto_A",
+        "Arbusto_B",
+        "Arbusto_C"
+      ],
+      "triangulos_lod0": [
+        40,
+        40,
+        40
+      ],
+      "triangulos_lod1": [
+        20,
+        20,
+        20
+      ]
+    },
+    "Chopo": {
+      "desde_byte": 238608,
+      "cuantas": 2098,
+      "radio_copa_m": 1.9,
+      "altura_m": 17.0,
+      "variantes": [
+        "Chopo_A",
+        "Chopo_B"
+      ],
+      "triangulos_lod0": [
+        90,
+        90
+      ],
+      "triangulos_lod1": [
+        30,
+        30
+      ]
+    },
+    "Encina": {
+      "desde_byte": 288960,
+      "cuantas": 845,
+      "radio_copa_m": 4.0,
+      "altura_m": 7.5,
+      "variantes": [
+        "Encina_A",
+        "Encina_B"
+      ],
+      "triangulos_lod0": [
+        113,
+        113
+      ],
+      "triangulos_lod1": [
+        30,
+        30
+      ]
+    },
+    "Frondosa": {
+      "desde_byte": 309240,
+      "cuantas": 1383,
+      "radio_copa_m": 3.8,
+      "altura_m": 17.0,
+      "variantes": [
+        "Frondosa_A",
+        "Frondosa_B"
+      ],
+      "triangulos_lod0": [
+        123,
+        123
+      ],
+      "triangulos_lod1": [
+        38,
+        38
+      ]
+    },
+    "Pino": {
+      "desde_byte": 342432,
+      "cuantas": 177,
+      "radio_copa_m": 3.0,
+      "altura_m": 17.0,
+      "variantes": [
+        "Pino_A",
+        "Pino_B"
+      ],
+      "triangulos_lod0": [
+        133,
+        133
+      ],
+      "triangulos_lod1": [
+        30,
+        30
+      ]
+    },
+    "Roble": {
+      "desde_byte": 346680,
+      "cuantas": 3668,
+      "radio_copa_m": 5.0,
+      "altura_m": 15.0,
+      "variantes": [
+        "Roble_A",
+        "Roble_B",
+        "Roble_C"
+      ],
+      "triangulos_lod0": [
+        143,
+        143,
+        143
+      ],
+      "triangulos_lod1": [
+        58,
+        58,
+        58
+      ]
+    }
+  }
+}

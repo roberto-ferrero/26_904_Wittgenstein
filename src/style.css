@@ -1,0 +1,164 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #06170f;
+  font-family: system-ui, sans-serif;
+}
+
+/* paleta: verde oscuro (la de 26_903_Whale era azul) */
+:root {
+  --app-cover: #06170f;
+  --app-text: #d8e8dc;
+  --app-accent: #7fc79a;
+  --app-accent-2: #a9e0bd;
+  --app-border: #24543a;
+  --app-panel: rgb(4 22 12 / 94%);
+}
+
+canvas {
+  display: block;
+}
+
+/* ------------------------------------------------------------------ presentación */
+.app-ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  color: var(--app-text);
+}
+
+.app-cover {
+  position: absolute;
+  inset: 0;
+  background: var(--app-cover);
+}
+
+.app-ui header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 26px;
+  background: linear-gradient(rgb(2 14 7 / 85%), transparent);
+}
+
+.app-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--app-accent);
+}
+
+.app-ui h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 450;
+  letter-spacing: 0.02em;
+}
+
+.app-backend {
+  font: 12px ui-monospace, monospace;
+  color: var(--app-accent);
+}
+
+.app-status {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(460px, 80vw);
+  padding: 28px;
+  box-sizing: border-box;
+  background: var(--app-panel);
+  border: 1px solid var(--app-border);
+  text-align: center;
+  font-size: 14px;
+  transition: opacity 0.6s ease;
+}
+
+.app-status p {
+  margin: 0;
+}
+
+.app-status code {
+  color: var(--app-accent-2);
+}
+
+.app-status-error {
+  pointer-events: auto;
+  width: min(640px, 90vw);
+}
+
+.app-progress {
+  height: 3px;
+  margin-top: 22px;
+  background: rgb(127 199 154 / 18%);
+}
+
+.app-progress-fill {
+  width: 0;
+  height: 100%;
+  background: var(--app-accent);
+  transition: width 0.4s ease;
+}
+
+.app-hidden {
+  opacity: 0;
+}
+
+.app-ui footer {
+  position: absolute;
+  left: 26px;
+  right: 12px;
+  bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.app-metrics {
+  display: inline-block;
+  margin: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 3px 5px;
+  border-radius: 3px;
+  background: rgb(2 14 7 / 85%);
+  font: 11px ui-monospace, monospace;
+  color: var(--app-accent);
+}
+
+/* panel de control: bajo la cabecera y con la paleta verde */
+.lil-gui.autoPlace {
+  top: 64px !important;
+  max-height: calc(100% - 110px) !important;
+}
+
+.lil-gui {
+  --background-color: rgb(4 22 12 / 94%);
+  --title-background-color: #0a2a1a;
+  --title-text-color: var(--app-text);
+  --text-color: var(--app-text);
+  --widget-color: #12392a;
+  --hover-color: #1a4a36;
+  --focus-color: #22603f;
+  --number-color: var(--app-accent-2);
+  --string-color: var(--app-accent);
+}
+
+@media (max-width: 700px) {
+  .app-ui header {
+    padding: 12px;
+  }
+
+  .app-ui h1 {
+    font-size: 18px;
+  }
+
+  .app-ui footer {
+    left: 12px;
+  }
+}

@@ -1,0 +1,58 @@
+# Ian Miller's Wittgenstein Castle (26_904)
+
+Recreación en 3D de la ilustración de Ian Miller con Three.js r186 (`WebGPURenderer` + TSL) y Vite: el castillo,
+el meandro del río, la torre, las colinas con 18.113 árboles con viento y un cielo físico con nubes volumétricas.
+
+## Arrancar
+
+```
+npm install
+npm run dev        # http://localhost:5173
+```
+
+| Comando | Qué hace |
+|---|---|
+| `npm run dev` | Servidor de desarrollo (con herramientas de depuración en la consola) |
+| `npm run build` | Build de producción en `dist/` con rutas relativas: funciona en cualquier subruta |
+| `npm run preview` | Sirve `dist/` para probar el build |
+| `npm run gen:clouds` | Regenera las texturas de ruido de las nubes |
+
+Necesita un navegador con WebGPU (Chrome o Edge 113+); sin él, Three.js cae a WebGL 2.
+
+## Qué hay
+
+- **Arranque** (copiado de 26_903_Whale): cortina verde oscuro con los pasos de la carga y barra de progreso, que se
+  funde cuando la imagen es estable (al menos 1,5 s y 45 fotogramas sin tirones, como mucho 12 s). Cabecera con el
+  proyecto y el backend, y pie con FPS, ms por fotograma, resolución, dibujos, triángulos y estado del cielo.
+- **Escena v10** en `public/escena/` (copiada de "Claude working folder"): terreno de 1000 × 1500 m con agua y rocas,
+  castillo v4 con roña, humedades e hiedra que se mece, torre y vegetación instanciada con dos LOD y viento.
+  Arranca en la cámara "Camera" de Blender (OrbitControls; "Volver a Camera" en el panel).
+- **Cielo: [VolumetricSky1](src/VolumetricSky1/README.md)**, módulo reutilizable sacado del cielo de Whale. Sustituye
+  al cielo equirectangular. Aquí arranca con el sol manual en la dirección de la escena de Blender (34° de elevación,
+  acimut ~307°); en el panel se puede pasar a fecha, hora y lugar. El cielo mueve el sol (color, fuerza y dirección,
+  manteniendo la caja de sombras sobre el terreno), la luz hemisférica y el mapa de entorno, y la niebla de la escena
+  toma el color de su horizonte ("color del cielo" en la carpeta Niebla).
+- **Niebla** (`src/escena/atmosfera.js`): niebla por distancia y nieblina de baja cota en un solo `fogNode`.
+- **Panel** lil-gui replegado por defecto, con la paleta verde: rendimiento, cámara, cielo (sol, atmósfera y nubes),
+  luz, niebla, agua, vegetación y visibilidad.
+
+## Rendimiento
+
+Medido a 1920 × 1080 en el equipo de desarrollo, con la GPU sincronizada en cada fotograma: 9,1 ms desde "Camera"
+(6,4 ms sin el cielo) y 7,4 ms en vista aérea.
+
+## Estructura
+
+```
+src/main.js           montaje de la escena, cielo, panel y bucle
+src/core/ui.js        arranque, cabecera y pie de métricas
+src/escena/           niebla, agua y vegetación
+src/VolumetricSky1/   cielo físico con nubes volumétricas (módulo autocontenido, con su README)
+public/escena/        assets de la escena v10 (glb con Draco, datos y vegetación)
+public/draco/         decodificador Draco
+```
+
+## Depuración (solo `npm run dev`)
+
+En la consola: `scene`, `camera`, `sky`, `vegetacion`… `await renderFrames(60)` dibuja 60 fotogramas a paso fijo y
+devuelve los ms por fotograma; `await capture('nombre')` guarda el canvas en `capturas/nombre.jpg`.

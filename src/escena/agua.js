@@ -1,0 +1,72 @@
+import * as THREE from 'three/webgpu';
+import { attribute, mix, uniform, texture, uv, vec2, time, normalMap } from 'three/tsl';
+
+// Agua del río, aislada del resto de la escena para poder sustituirla.
+//
+// La idea final es un fluido realista recorriendo el cauce. Cuando llegue, basta con
+// escribir otra función con la misma firma (recibe la malla "Agua" del .glb y los datos
+// de la escena, devuelve { objeto, actualizar, gui? }) y cambiarla en main.js.
+// La malla original sirve de referencia para la forma del cauce y la cota del agua;
+// desde la v4 lleva por vértice _profundidad, _flujo_x, _flujo_z, _velocidad y _a_lo_largo, y un
+// segundo UV (uv1) que sigue el cauce, pensados para esa corriente. Esta versión solo usa _profundidad.
+
+const lineal = ( rgb ) => new THREE.Color().setRGB( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], THREE.LinearSRGBColorSpace );
+
+export function crearAguaPlana( mallaOriginal, datos ) {
+
+	const geometria = mallaOriginal.geometry;
+	const original = mallaOriginal.material;
+
+	const u = {
+		colorOrilla: uniform( lineal( datos.agua.color_lineal ).multiplyScalar( 1.35 ) ),
+		colorFondo: uniform( lineal( datos.agua.color_lineal ).multiplyScalar( 0.55 ) ),
+		velocidad: uniform( 0.012 ),
+		fuerzaOndas: uniform( 0.3 ),
+		escalaOndas: uniform( 4 ),
+	};
+
+	const material = new THREE.MeshStandardNodeMaterial( {
+		roughness: datos.agua.rugosidad,
+		metalness: 0,
+	} );
+
+	material.colorNode = geometria.attributes._profundidad
+		? mix( u.colorOrilla, u.colorFondo, attribute( '_profundidad', 'float' ).clamp( 0, 1 ) )
+		: u.colorOrilla;
+
+	if ( original.normalMap ) {
+
+		const t = time.mul( u.velocidad );
+		const uvA = uv().mul( u.escalaOndas ).add( vec2( t, t.mul( 0.6 ) ) );
+		const uvB = uv().mul( u.escalaOndas.mul( 1.7 ) ).sub( vec2( t.mul( 0.8 ), t.mul( 0.3 ) ) );
+		const nA = texture( original.normalMap, uvA );
+		const nB = texture( original.normalMap, uvB );
+		material.normalNode = normalMap( nA.add( nB ).mul( 0.5 ), u.fuerzaOndas );
+
+	}
+
+	const objeto = new THREE.Mesh( geometria, material );
+	objeto.name = 'Agua';
+	objeto.position.copy( mallaOriginal.position );
+	objeto.quaternion.copy( mallaOriginal.quaternion );
+	objeto.scale.copy( mallaOriginal.scale );
+	objeto.receiveShadow = true;
+
+	return {
+		objeto,
+		actualizar() {},
+		gui( carpeta ) {
+			carpeta.addColor( { c: u.colorOrilla.value.getHex( THREE.SRGBColorSpace ) }, 'c' ).name( 'color orilla' )
+				.onChange( ( v ) => u.colorOrilla.value.setHex( v, THREE.SRGBColorSpace ) );
+			carpeta.addColor( { c: u.colorFondo.value.getHex( THREE.SRGBColorSpace ) }, 'c' ).name( 'color fondo' )
+				.onChange( ( v ) => u.colorFondo.value.setHex( v, THREE.SRGBColorSpace ) );
+			carpeta.add( material, 'roughness', 0, 1, 0.01 ).name( 'rugosidad' );
+			if ( original.normalMap ) {
+				carpeta.add( u.velocidad, 'value', 0, 0.1, 0.001 ).name( 'velocidad ondas' );
+				carpeta.add( u.escalaOndas, 'value', 0.1, 20, 0.1 ).name( 'escala ondas' );
+				carpeta.add( u.fuerzaOndas, 'value', 0, 1.5, 0.01 ).name( 'fuerza ondas' );
+			}
+		},
+	};
+
+}
