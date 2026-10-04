@@ -30,11 +30,11 @@ Necesita un navegador con WebGPU (Chrome o Edge 113+); sin él, Three.js cae a W
 - **Cielo: [VolumetricSky1](src/VolumetricSky1/README.md)**, módulo reutilizable sacado del cielo de Whale. Sustituye
   al cielo equirectangular. Aquí arranca con el sol manual en la dirección de la escena de Blender (34° de elevación,
   acimut ~307°); en el panel se puede pasar a fecha, hora y lugar. El cielo mueve el sol (color, fuerza y dirección,
-  manteniendo la caja de sombras sobre el terreno), la luz hemisférica y el mapa de entorno, y la niebla de la escena
-  toma el color de su horizonte ("color del cielo" en la carpeta Niebla).
-- **Niebla** (`src/escena/atmosfera.js`): niebla por distancia y nieblina de baja cota en un solo `fogNode`.
-- **Panel** lil-gui replegado por defecto, con la paleta verde: rendimiento, cámara, cielo (sol, atmósfera y nubes),
-  luz, niebla, agua, vegetación y visibilidad.
+  manteniendo la caja de sombras sobre el terreno), la luz hemisférica y el mapa de entorno.
+- **Niebla**: la única es la del cielo, una `FogExp2` con el color de su horizonte (densidad en la carpeta
+  "Atmósfera y luz" del cielo). La niebla por distancia y de baja cota del visor de la v10 se ha quitado.
+- **Panel** lil-gui replegado por defecto, con la paleta verde: rendimiento, cámara, cielo (sol, atmósfera, niebla y nubes),
+  luz, agua, vegetación y visibilidad.
 
 ## Rendimiento
 
@@ -46,7 +46,7 @@ Medido a 1920 × 1080 en el equipo de desarrollo, con la GPU sincronizada en cad
 ```
 src/main.js           montaje de la escena, cielo, panel y bucle
 src/core/ui.js        arranque, cabecera y pie de métricas
-src/escena/           niebla, agua y vegetación
+src/escena/           agua y vegetación
 src/VolumetricSky1/   cielo físico con nubes volumétricas (módulo autocontenido, con su README)
 public/escena/        assets de la escena v10 (glb con Draco, datos y vegetación)
 public/draco/         decodificador Draco

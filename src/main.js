@@ -7,7 +7,6 @@ import GUI from 'lil-gui';
 import { positionLocal, positionGeometry, modelWorldMatrix, vec4 } from 'three/tsl';
 
 import { createUi } from './core/ui.js';
-import { crearNiebla } from './escena/atmosfera.js';
 import { crearAguaPlana } from './escena/agua.js';
 import { crearVegetacion, desplazamientoViento } from './escena/vegetacion.js';
 import { createVolumetricSky1 } from './VolumetricSky1/index.js';
@@ -187,11 +186,6 @@ scene.add( sol, sol.target );
 const hemi = new THREE.HemisphereLight( lineal( il.hemisferica.cielo_lineal ), lineal( il.hemisferica.suelo_lineal ), il.hemisferica.intensidad_sugerida );
 scene.add( hemi );
 
-// ---------------------------------------------------------------- Niebla
-
-const niebla = crearNiebla( datos );
-scene.fogNode = niebla.fogNode;
-
 // ---------------------------------------------------------------- Cámara "Camera"
 
 const cr = datos.camara_roberto;
@@ -228,7 +222,7 @@ await ui.step( 'Calculando el cielo y las nubes volumétricas…', 0.45 );
 const aSol = haciaSol;
 const sky = await createVolumetricSky1( {
 	renderer, scene, camera, sun: sol, hemi,
-	fog: false, // la escena tiene su propia niebla (fogNode); se tiñe con sky.fogColor
+	fog: true, // la única niebla de la escena: FogExp2 del cielo con el color de su horizonte
 	settings: {
 		sunMode: 'Manual',
 		sunElevation: THREE.MathUtils.radToDeg( Math.asin( aSol.y ) ),
@@ -236,16 +230,9 @@ const sky = await createVolumetricSky1( {
 		sunStrength: il.sol.intensidad_threejs_sugerida,
 		ambientStrength: 0.8,
 		environmentIntensity: 0.6,
+		fogDensity: 0.0004, // ≈ la niebla por distancia que tenía el visor de la v10 (0,00035)
 	},
 } );
-
-// La niebla de la escena toma el color del horizonte del cielo (se puede desactivar en el panel).
-const nieblaCielo = { activa: true };
-function teñirNiebla() {
-	if ( ! nieblaCielo.activa || ! sky.state.enabled ) return;
-	niebla.uniforms.color.value.copy( sky.fogColor );
-	niebla.uniforms.brumaColor.value.copy( sky.fogColor );
-}
 
 // ---------------------------------------------------------------- GUI (replegada por defecto, como en Whale)
 
@@ -266,21 +253,6 @@ addVolumetricSky1Gui( sky, gui ).close();
 const fLuz = gui.addFolder( 'Luz y exposición' ).close();
 fLuz.add( renderer, 'toneMappingExposure', 0.2, 3, 0.01 ).name( 'exposición' );
 fLuz.add( opts, 'sombras' ).onChange( ( v ) => { sol.castShadow = v; } );
-
-const u = niebla.uniforms;
-const colorGui = ( carpeta, unif, nombre ) =>
-	carpeta.addColor( { get c() { return unif.value.getHex( THREE.SRGBColorSpace ); }, set c( v ) { unif.value.setHex( v, THREE.SRGBColorSpace ); } }, 'c' )
-		.name( nombre ).listen();
-const fNiebla = gui.addFolder( 'Niebla' ).close();
-const bool = ( unif ) => ( { get v() { return unif.value > 0.5; }, set v( x ) { unif.value = x ? 1 : 0; } } );
-fNiebla.add( nieblaCielo, 'activa' ).name( 'color del cielo' );
-fNiebla.add( bool( u.activa ), 'v' ).name( 'por distancia' );
-fNiebla.add( u.densidad, 'value', 0, 0.003, 0.00005 ).name( 'densidad' );
-colorGui( fNiebla, u.color, 'color' );
-fNiebla.add( bool( u.brumaActiva ), 'v' ).name( 'baja cota' );
-fNiebla.add( u.brumaDensidad, 'value', 0, 0.03, 0.0001 ).name( 'densidad en agua' );
-fNiebla.add( u.brumaCaida, 'value', 1, 60, 0.5 ).name( 'caída (m)' );
-colorGui( fNiebla, u.brumaColor, 'color bruma' );
 
 if ( agua?.gui ) agua.gui( gui.addFolder( 'Agua' ).close() );
 vegetacion.gui( gui.addFolder( 'Vegetación' ).close() );
@@ -306,7 +278,6 @@ function frame( dt ) {
 	vegetacion.actualizar( camera );
 	agua?.actualizar( dt );
 	sky.update( dt );
-	teñirNiebla();
 	renderer.render( scene, camera );
 }
 
@@ -355,7 +326,7 @@ renderer.setAnimationLoop( ( time ) => {
 // Acceso desde la consola para depurar (solo en `npm run dev`).
 if ( import.meta.env.DEV ) {
 	Object.assign( window, {
-		THREE, scene, camera, renderer, controls, piezas, agua, niebla, vegetacion, sky, gui, ui,
+		THREE, scene, camera, renderer, controls, piezas, agua, vegetacion, sky, gui, ui,
 		/** Dibuja n fotogramas a paso fijo aunque la pestaña esté oculta; devuelve ms por fotograma con la GPU sincronizada. */
 		async renderFrames( n = 1, dt = 1 / 60 ) {
 			const dev = renderer.backend.device;

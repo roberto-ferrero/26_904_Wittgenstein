@@ -57,7 +57,7 @@ export function addVolumetricSky1Gui(sky, parent = null) {
   fAtm.add(s, 'moonStrength', 0, 2, 0.05).name('Luz de luna');
   fAtm.add(s, 'stars', 0, 3, 0.05).name('Estrellas');
   fAtm.add(s, 'cloudLight', 0.1, 4, 0.05).name('Brillo de las nubes');
-  fAtm.add(s, 'fogDensity', 0, 0.02, 0.0001).name('Bruma (perspectiva aérea)');
+  fAtm.add(s, 'fogDensity', 0, 0.005, 0.00005).name('Niebla (densidad FogExp2)');
   fAtm.onFinishChange(() => sky.invalidateEnv()); // rehacer el entorno al soltar el control
 
   // ------------------------------------------------------------------ nubes volumétricas
