@@ -5,6 +5,8 @@ El panel (arriba a la derecha) empieza replegado. Las carpetas, en orden:
 | Carpeta | Qué contiene |
 |---|---|
 | **↻ Actualizar** | Botón: vuelve a aplicar todo el cielo, la atmósfera, las nubes y los reflejos. Para cuando algo no se vea como esperas tras cambiar un valor. |
+| **⧉ Copiar URL con esta configuración** | Botón: copia al portapapeles la URL con el estado actual (ver abajo). |
+| **⟲ Restablecer valores de arranque** | Botón: vuelve todos los controles y la vista de la cámara a como estaban al abrir la página sin parámetros, y limpia la URL. |
 | **Rendimiento** | *pixel ratio*: resolución interna respecto a la pantalla (1 = nativa, 2 = el doble, menos de 1 = más rápido y más borroso). |
 | **Cámara** | *Volver a "Camera"*: devuelve la vista a la cámara de Blender. *fov vertical*: ángulo de visión en grados (22,9 = objetivo de 50 mm). |
 | **Cielo e iluminación** | El sol, la luz de la escena y la exposición. Además de lo de VolumetricSky1, aquí está *Sombras del sol* (activa o quita las sombras). |
@@ -21,3 +23,12 @@ Lo que ya no está en el panel porque estaba repetido: la carpeta *Luz y exposic
 iluminación y las sombras también) y la *niebla FogExp2* del cielo (la sustituyen la perspectiva aérea y la niebla
 en capa). Parámetros finos que se han quitado del panel pero siguen en el código (`sky.state`, `sky.clouds.state`):
 ozono, dispersión múltiple, direccionalidad de Mie, luna, estrellas, resolución y acumulación temporal de las nubes.
+
+## La configuración en la URL
+
+Cada control que cambias respecto al valor de arranque se escribe en la URL, después de `#`, por ejemplo
+`#cielo-e-iluminacion.orientacion-del-escenario=135&nubes.morfologia=Estratocúmulos&niebla-en-capa.densidad-0-sin-niebla=0.006`.
+La vista de la cámara (posición y punto al que mira) también se guarda, como `vista=x,y,z,ox,oy,oz`, al soltar el
+ratón. Al abrir esa URL (en otra pestaña, otro equipo o después de recargar) se aplican los mismos valores, así que
+copiarla reproduce el estado configurado. Solo aparece lo que difiere del arranque; sin nada tras `#`, la escena
+arranca con los valores por defecto. Las claves son la carpeta y el nombre del control, en minúsculas y sin acentos.

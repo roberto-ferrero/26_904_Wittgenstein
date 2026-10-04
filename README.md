@@ -37,7 +37,8 @@ Necesita un navegador con WebGPU (Chrome o Edge 113+); sin él, Three.js cae a W
   visor de la v10). La niebla propia del visor de la v10 se ha quitado.
 - **Panel** lil-gui replegado por defecto, con la paleta verde y 368 px de ancho: ↻ Actualizar, rendimiento, cámara,
   cielo e iluminación, atmósfera y nubes, niebla en capa, agua, vegetación y visibilidad. Qué hace cada control:
-  [GUIA_PANEL.md](GUIA_PANEL.md).
+  [GUIA_PANEL.md](GUIA_PANEL.md). Todo lo que cambias en el panel, y la vista de la cámara, se guarda en la URL
+  (`src/core/urlState.js`): copiándola se reproduce la misma configuración.
 
 ## Rendimiento
 
@@ -49,6 +50,7 @@ Medido a 1920 × 1080 en el equipo de desarrollo, con la GPU sincronizada en cad
 ```
 src/main.js           montaje de la escena, cielo, panel y bucle
 src/core/ui.js        arranque, cabecera y pie de métricas
+src/core/urlState.js  estado del panel y de la cámara en la URL
 src/escena/           agua y vegetación
 src/VolumetricSky1/   cielo físico con nubes volumétricas (módulo autocontenido, con su README)
 public/escena/        assets de la escena v10 (glb con Draco, datos y vegetación)

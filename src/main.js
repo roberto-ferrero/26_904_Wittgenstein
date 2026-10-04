@@ -7,6 +7,7 @@ import GUI from 'lil-gui';
 import { positionLocal, positionGeometry, modelWorldMatrix, vec4 } from 'three/tsl';
 
 import { createUi } from './core/ui.js';
+import { createUrlState } from './core/urlState.js';
 import { crearAguaPlana } from './escena/agua.js';
 import { crearVegetacion, desplazamientoViento } from './escena/vegetacion.js';
 import { createVolumetricSky1 } from './VolumetricSky1/index.js';
@@ -213,6 +214,8 @@ function volverACamera() {
 	camera.updateProjectionMatrix();
 	controls.target.copy( objInicial );
 	controls.update();
+	gui.controllersRecursive().forEach( ( c ) => c.updateDisplay() );
+	urlState.writeURL();
 }
 
 // ---------------------------------------------------------------- Cielo: VolumetricSky1
@@ -250,6 +253,9 @@ await ui.step( 'Preparando el panel…', 0.55 );
 const gui = new GUI( { title: 'Wittgenstein Castle', width: 368 } ); // 50 % más ancho que el de lil-gui (245 px)
 gui.close();
 gui.add( { actualizar: () => sky.refresh() }, 'actualizar' ).name( '↻ Actualizar (vuelve a aplicar todo)' );
+// el estado del panel va en la URL (ver más abajo): estos botones la copian o vuelven a los valores de arranque
+gui.add( { copiar: () => copiarURL() }, 'copiar' ).name( '⧉ Copiar URL con esta configuración' );
+gui.add( { restablecer: () => urlState.reset() }, 'restablecer' ).name( '⟲ Restablecer valores de arranque' );
 
 const fRend = gui.addFolder( 'Rendimiento' ).close();
 const opts = { pixelRatio: renderer.getPixelRatio(), sombras: true };
@@ -271,6 +277,34 @@ const fCapas = gui.addFolder( 'Visibilidad' ).close();
 fCapas.add( terreno, 'visible' ).name( 'terreno y rocas' );
 if ( agua ) fCapas.add( agua.objeto, 'visible' ).name( 'agua' );
 for ( const [ nombre, obj ] of Object.entries( piezas ) ) fCapas.add( obj, 'visible' ).name( nombre.toLowerCase() );
+
+// ---------------------------------------------------------------- Estado en la URL
+
+// Cada control que cambia respecto al arranque va al hash de la URL; abrir esa URL reproduce la configuración.
+// La vista de la cámara (posición y objetivo de la órbita) también, al soltar el ratón.
+const r1 = ( v ) => Math.round( v * 10 ) / 10;
+const urlState = createUrlState( gui, {
+	extra: {
+		vista: {
+			get: () => [ ...camera.position.toArray(), ...controls.target.toArray() ].map( r1 ).join( ',' ),
+			set: ( v ) => {
+				const n = v.split( ',' ).map( Number );
+				if ( n.length !== 6 || n.some( Number.isNaN ) ) return;
+				camera.position.set( n[ 0 ], n[ 1 ], n[ 2 ] );
+				controls.target.set( n[ 3 ], n[ 4 ], n[ 5 ] );
+				controls.update();
+			},
+		},
+	},
+	onLoad: () => sky.refresh(),
+} );
+controls.addEventListener( 'end', () => urlState.writeURL() );
+urlState.readURL();
+
+async function copiarURL() {
+	const url = urlState.shareURL();
+	try { await navigator.clipboard.writeText( url ); } catch { window.prompt( 'Copia esta URL:', url ); }
+}
 
 // ---------------------------------------------------------------- Fotograma
 
