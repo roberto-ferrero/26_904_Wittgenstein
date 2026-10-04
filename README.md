@@ -35,7 +35,7 @@ Necesita un navegador con WebGPU (Chrome o Edge 113+); sin él, Three.js cae a W
 - **Río: [RealisticRiver1](src/RealisticRiver1/README.md)**, módulo reutilizable en construcción para un río con
   corriente, remolinos y espuma ([plan](docs/RealisticRiver1_PLAN.md)). Hecho: mapas del cauce horneados al cargar,
   corriente base con las ondas desplazadas por ella (de norte a sur, hacia la cámara), color por profundidad, orilla
-  transparente, ondas de viento y reflejos del cielo regulables. Conjunto "Río de la ilustración" en el panel. El agua plana anterior sigue
+  transparente, ondas de viento y reflejos del cielo regulables. Conjunto "Río de la ilustración" en el panel. Remolinos con una simulación viva en compute que siguen las ondas. El agua plana anterior sigue
   disponible en `src/escena/agua.js`.
 - **Atmósfera sobre la escena**: la perspectiva aérea de VolumetricSky1, con la misma atmósfera que pinta el cielo,
   y su niebla en capa sobre el río (densidad 0,00175 hasta la cota del agua y transición de 11 m, los valores del

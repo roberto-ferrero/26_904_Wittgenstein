@@ -13,7 +13,7 @@ y reutilizable, como [VolumetricSky1](../VolumetricSky1/README.md). Plan complet
 | F1. Dominio | Lecho, máscara, distancia a la orilla, profundidad y obstáculos horneados en el navegador; vistas de depuración | **Hecha** |
 | F2. Corriente base | Función de corriente con profundidad e islas; normales con flow map | **Hecha** |
 | F3. Superficie | Color por profundidad, orilla transparente, reflejos del cielo regulables, ondas de viento | **Hecha** |
-| F4. Simulación viva | Remolinos (Stable Fluids 2D en compute) | Pendiente |
+| F4. Simulación viva | Remolinos (Stable Fluids 2D en compute); las ondas siguen su velocidad | **Hecha** |
 | F5. Espuma | Espuma advectada con fuentes físicas | Pendiente |
 | F6. Obstáculos en caliente | `addObstacle` / `removeObstacle` | Pendiente |
 | F7. Reflejo de la escena | Reflejo plano opcional | Pendiente |
@@ -77,6 +77,8 @@ renderer.setAnimationLoop(() => {
 | `flow` | Corriente base: `vx`, `vz` (relativas, media 1), `psi`, `sample(x, z)`, `texture` y `stats`. |
 | `maps` | Texturas para shaders u otros efectos: `{ domain }`. |
 | `setWind(x, z, speed)` | Viento sobre el agua para las ondas de viento: dirección hacia la que sopla (ejes de la escena) y m/s. Se puede llamar en cada fotograma. |
+| `simulation` | Simulación viva: `steps`, `dispatchesPerStep`, `uniforms`, `texture`, `reset()` (ver `sim.js`). |
+| `resetSimulation()` | Vuelve a poner la simulación en la corriente base (borra los remolinos). |
 | `rebuild()` | Vuelve a hornear el dominio y la corriente (tras mover el terreno o cambiar obstáculos). Devuelve las estadísticas del dominio. |
 | `debugViews` | Nombres de las vistas de depuración. |
 | `dispose()` | Quita el río de la escena y libera su material. La geometría sigue siendo de quien la cargó. |
@@ -96,9 +98,18 @@ renderer.setAnimationLoop(() => {
 | `rippleSize` | `90` | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |
 | `rippleStrength` | `0.3` | Fuerza del mapa de normales; sube hasta ×1,35 donde el agua corre más. |
 | `flowCycle` | `4` | Segundos por ciclo del flow map: más largo, más recorrido de cada fase y más estiramiento. |
+| `simulation` | `true` | Simulación viva activa. Sin ella las ondas siguen la corriente base (calidad baja, sin coste de compute). |
+| `simRate` | `30` | Pasos de simulación por segundo (a paso fijo; como mucho 2 por fotograma). |
+| `vorticity` | `0.4` | Confinamiento de vorticidad. |
+| `relaxTime` | `30` | Segundos en los que la simulación vuelve a la corriente base. |
+| `bankDrag` | `1` | Rozamiento junto a tierra (1/s): genera la cizalla de las orillas. |
+| `viscosity` | `0.1` | Mezcla con los vecinos por paso. |
+| `turbulence` | `1` | Siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s). |
+| `turbScale` | `30` | Metros de las perturbaciones sembradas (tamaño típico de los remolinos). |
+| `pressureIterations` | `20` | Iteraciones de Jacobi de la proyección. |
 | `windRipples` | `0.25` | Fuerza de las ondas de viento a 10 m/s (crece con el viento hasta ×1,5). |
 | `windSize` | `7` | Metros por repetición de las ondas de viento. |
-| `debugView` | `'Ninguna'` | Vista de depuración: `'Orilla (distancia con signo)'`, `'Profundidad'`, `'Obstáculos'`, `'Lecho (altura)'`, `'Corriente base (velocidad)'` o `'Corriente base frente a _flujo'`. Pinta el mapa sobre la lámina sin luz. |
+| `debugView` | `'Ninguna'` | Vista de depuración: `'Orilla (distancia con signo)'`, `'Profundidad'`, `'Obstáculos'`, `'Lecho (altura)'`, `'Corriente base (velocidad)'` (con la simulación activa muestra su velocidad), `'Corriente base frente a _flujo'` o `'Simulación (vorticidad)'`. Pinta el mapa sobre la lámina sin luz. |
 
 ## Dominio (F1)
 
@@ -149,6 +160,32 @@ El mapa de normales se desplaza con la corriente en dos fases desfasadas medio c
 reinicio. Cada punto lleva un desfase de fase con ruido, así que no hay latido común. Hay dos capas (90 m y 33 m por
 repetición), la fina algo más rápida, y la fuerza crece con la rapidez local.
 
+## Simulación viva (F4)
+
+Fluido incompresible promediado en la vertical (Stable Fluids) en compute (`sim.js`), sobre la rejilla de la
+corriente base (280 × 758 celdas de 2 m), a 30 pasos por segundo. Cada paso:
+
+1. Advección semilagrangiana de la velocidad.
+2. Vorticidad y confinamiento de vorticidad.
+3. Rozamiento junto a tierra (cizalla), viscosidad (quita el ruido de una celda), turbulencia junto a tierra y
+   relajación hacia la corriente base. La turbulencia es el rotacional de un ruido 3D (posición y tiempo), sin
+   divergencia, en una banda de 24 m junto a orillas y obstáculos: siembra las perturbaciones que la cizalla enrolla
+   en remolinos, que luego viajan río abajo.
+4. Proyección ponderada por la profundidad, `∇·(h ∇p) = ∇·(h u)`, con 20 iteraciones de Jacobi y la presión del
+   paso anterior como punto de partida. Contorno cerrado en tierra y abierto (p = 0) donde el río entra y sale; por
+   la entrada llega el agua con la corriente base.
+5. Salida a una textura RGBA16F: velocidad relativa (x, z), rapidez relativa y vorticidad. Las ondas del flow map
+   siguen esta velocidad en lugar de la corriente base.
+
+Velocidades en m/s ya exageradas (`flowSpeed × flowBoost`). Son 26 dispatches por paso sobre 212 k celdas.
+
+En la escena v10 salen remolinos de 20-60 m que nacen en las orillas, la punta del castillo y el promontorio de la
+torre, con giros alternos, y viajan con la corriente; la vista **Simulación (vorticidad)** los pinta en rojo y azul.
+Desde "Camera" apenas se ven en las ondas: la espuma de la F5 es la que los hará visibles.
+
+Pendiente respecto al plan: no hay interpolación entre pasos (con campos tan lentos no se nota) ni corrección
+BFECC/MacCormack; la turbulencia sembrada y la viscosidad bastan para remolinos coherentes.
+
 ## Superficie (F3)
 
 - **Color por profundidad**: `mix(colorShallow, colorDeep, 1 − e^(−profundidad / absorption))` con la profundidad
@@ -175,12 +212,13 @@ Medido en el visor de la escena v10 a 1920 × 1080 con la GPU sincronizada (`awa
 
 | Vista | Con el río | Sin el río |
 |---|---|---|
-| "Camera" | 9,8-11 ms | 9,4-10,8 ms |
+| "Camera" | 11,1-11,4 ms (simulación activa) | 10,4 ms (sin simulación) |
 | Aérea | 8,6 ms | 8,4 ms |
 
 Por fotograma el río es un solo dibujo de 44.322 triángulos. Con el flow map, las ondas de viento y el color por
 profundidad (cinco lecturas del mapa de normales, una de la corriente, una del dominio y un ruido) cuesta ~0,4-0,6 ms
-desde "Camera"; la variación entre medidas es de ±0,3 ms. Al cargar
+desde "Camera"; la variación entre medidas es de ±0,3 ms. La simulación cuesta ~0,8 ms por fotograma a 60 fps (unos 1,6 ms por paso, uno de cada dos fotogramas); se puede
+bajar con menos iteraciones de presión o menos pasos por segundo. Al cargar
 se hace una vez el horneado del dominio (0,5-0,9 s) y la corriente base (~1,3 s), con el bucle del visor en marcha.
 
 ## Archivos
@@ -191,7 +229,8 @@ RealisticRiver1.js  creación, estado, update, dispose
 surface.js          material TSL de la lámina
 domain.js           horneado del dominio: vista cenital, profundidad, distancia a la orilla, obstáculos
 baseflow.js         corriente base: función de corriente con profundidad e islas
-debug.js            vistas de depuración de los mapas y de la corriente
+sim.js              simulación viva en compute: remolinos, cizalla, proyección por profundidad
+debug.js            vistas de depuración de los mapas, la corriente y la vorticidad
 gui.js              panel lil-gui (opcional)
 GUIA_PANEL.md       qué hace cada control
 ```

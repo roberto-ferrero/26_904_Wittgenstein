@@ -115,6 +115,11 @@ export function createSurface(state, normalTexture, domain, flow) {
     wind.x = x / l; wind.z = z / l; wind.speed = speed;
   }
 
+  /** Textura de velocidad que siguen las ondas: la de la simulación o la de la corriente base (misma rejilla). */
+  function setVelocityTexture(tex) {
+    flowTex.value = tex;
+  }
+
   /** Tras rehornear el dominio y la corriente. */
   function setMaps(dm, fl) {
     domainTex.value = dm.texture;
@@ -126,5 +131,5 @@ export function createSurface(state, normalTexture, domain, flow) {
   }
 
   apply();
-  return { material, uniforms: u, apply, update, setWind, setMaps, dispose: () => material.dispose() };
+  return { material, uniforms: u, apply, update, setWind, setMaps, setVelocityTexture, dispose: () => material.dispose() };
 }

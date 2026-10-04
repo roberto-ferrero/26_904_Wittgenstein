@@ -14,6 +14,17 @@ En el visor está en la carpeta **Agua**. Los controles irán creciendo con cada
 | exageración de la velocidad | 0-10 | Multiplica lo que se ve: desde lejos, la velocidad real parece casi quieta. |
 | tamaño ondas (m) | 2-300 | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |
 | fuerza ondas | 0-1,5 | Cuánto deforman las ondas los reflejos; más donde el agua corre más. |
+| **Remolinos (simulación)** | | Carpeta con la simulación viva: |
+| · activa | sí/no | Sin ella las ondas siguen la corriente base, sin remolinos y sin coste de compute. |
+| · confinamiento de vorticidad | 0-3 | Mantiene vivos los remolinos. Muy alto, aparece ruido de celda. |
+| · vuelta a la corriente base (s) | 1-120 | Corto, el río vuelve enseguida a la corriente media y hay menos remolinos; largo, viven más. |
+| · rozamiento en orillas (1/s) | 0-10 | Cuánto frena el agua junto a tierra: más cizalla y más remolinos en las orillas. |
+| · turbulencia junto a tierra | 0-5 | Perturbaciones sembradas junto a orillas y obstáculos que se enrollan en remolinos. 0 = solo cizalla. |
+| · tamaño de la turbulencia (m) | 4-120 | Tamaño típico de los remolinos sembrados. |
+| · viscosidad | 0-0,5 | Suaviza la velocidad y quita el ruido de una celda; muy alta, apaga los remolinos. |
+| · iteraciones de presión | 2-80 | Precisión de la proyección (que el caudal se conserve). Menos, más barato. |
+| · pasos por segundo | 10-60 | Frecuencia de la simulación. Menos, más barato. |
+| · ⟲ Reiniciar los remolinos | | Vuelve a la corriente base. |
 | ondas de viento | 0-1,5 | Fuerza de las ondas pequeñas que empuja el viento (crece con la velocidad del viento de las nubes). |
 | tamaño ondas de viento (m) | 1-40 | Metros por repetición de las ondas de viento. |
 | ciclo del flow map (s) | 0,5-12 | Cada cuánto se reinicia cada fase del desplazamiento. Más largo, ondas más estiradas por la corriente; más corto, se nota más el fundido. |
@@ -24,7 +35,7 @@ No se guarda en la URL ni en los conjuntos de configuración.
 
 | Control | Qué hace |
 |---|---|
-| Vista | Pinta un mapa del dominio sobre el agua, sin luz. **Orilla**: azules en el agua (más oscuro hacia el centro), ocres en tierra, la orilla en blanco y curvas cada 5 m. **Profundidad**: amarillo en los bajíos, verde, azul y morado a 13 m, con curvas cada metro. **Obstáculos**: rojo donde una roca sobresale del agua, sobre la distancia a la orilla en grises. **Lecho**: altura del fondo con curvas cada 2 m. **Corriente base (velocidad)**: azul oscuro donde el agua va despacio, turquesa a la media, amarillo y blanco al doble o más; los puntos blancos viajan con la corriente. **Corriente base frente a _flujo**: verde donde la dirección coincide con la que trae la lámina (`_flujo_x`, `_flujo_z`), amarillo y rojo donde difiere. |
+| Vista | Pinta un mapa del dominio sobre el agua, sin luz. **Orilla**: azules en el agua (más oscuro hacia el centro), ocres en tierra, la orilla en blanco y curvas cada 5 m. **Profundidad**: amarillo en los bajíos, verde, azul y morado a 13 m, con curvas cada metro. **Obstáculos**: rojo donde una roca sobresale del agua, sobre la distancia a la orilla en grises. **Lecho**: altura del fondo con curvas cada 2 m. **Corriente base (velocidad)**: azul oscuro donde el agua va despacio, turquesa a la media, amarillo y blanco al doble o más; los puntos blancos viajan con la corriente. Con la simulación activa, la vista de velocidad muestra la de la simulación. **Simulación (vorticidad)**: rojo y azul según el sentido de giro, más intenso cuanto más gira; los puntos viajan con la corriente. **Corriente base frente a _flujo**: verde donde la dirección coincide con la que trae la lámina (`_flujo_x`, `_flujo_z`), amarillo y rojo donde difiere. |
 | Dominio | Tamaño de la rejilla, celdas con agua, profundidad máxima y celdas de obstáculo. |
 | Horneado | Lo que tardó el último horneado. |
 | Corriente base | Tamaño de la rejilla, islas, iteraciones y tiempo del cálculo. |

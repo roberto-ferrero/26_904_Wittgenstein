@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import { createSurface } from './surface.js';
 import { bakeDomain } from './domain.js';
 import { solveBaseFlow } from './baseflow.js';
+import { createSimulation } from './sim.js';
 import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
 
 /**
@@ -14,6 +15,7 @@ import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
  *   con vistas de depuración (debug.js).
  * - F2: corriente base (baseflow.js) y normales desplazadas con ella (flow map, surface.js).
  * - F3: color por profundidad real, orilla transparente, ondas de viento y reflejos del cielo regulables.
+ * - F4: simulación viva en compute (sim.js): remolinos, separación y cizalla; las ondas siguen su velocidad.
  * Simulación, espuma y obstáculos en caliente llegan en las fases siguientes sin cambiar esta API.
  *
  * Uso mínimo:
@@ -39,6 +41,17 @@ export const RIVER_DEFAULTS = {
   rippleSize: 90, // metros por repetición de la capa grande (la fina es 0,37 veces); a 400 m de la cámara lo pequeño se pierde
   rippleStrength: 0.3,
   flowCycle: 4, // segundos por ciclo del flow map: más largo, más estela; más corto, menos estiramiento
+  // simulación viva (remolinos): pasos por segundo, confinamiento de vorticidad, segundos para volver a la
+  // corriente base, rozamiento junto a tierra (por segundo) e iteraciones de la proyección
+  simulation: true,
+  simRate: 30,
+  vorticity: 0.4,
+  relaxTime: 30,
+  bankDrag: 1,
+  viscosity: 0.1, // mezcla con los vecinos por paso (quita el ruido de una celda)
+  turbulence: 1, // siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s)
+  turbScale: 30, // metros de las perturbaciones sembradas
+  pressureIterations: 20,
   // ondas de viento (con setWind): fuerza a 10 m/s de viento y metros por repetición
   windRipples: 0.25,
   windSize: 7,
@@ -88,11 +101,19 @@ export async function createRealisticRiver1({
   object.receiveShadow = true;
 
   const debug = createDebugMaterial(() => domain, () => flow, geometry, surface.uniforms);
+
+  // ---------------------------------------------------------------- simulación viva (F4)
+  let sim = createSimulation(renderer, flow, state);
+  debug.setSimTexture(sim.texture);
   scene.add(object);
 
   function apply() {
     object.visible = state.enabled;
     surface.apply();
+    sim.applyState();
+    const vel = state.simulation ? sim.texture : flow.texture;
+    surface.setVelocityTexture(vel);
+    debug.setVelocityTexture(vel);
     const view = DEBUG_VIEWS[state.debugView] ?? 0;
     debug.uniforms.view.value = view;
     object.material = view ? debug.material : surface.material;
@@ -106,6 +127,10 @@ export async function createRealisticRiver1({
     flow = solveBaseFlow(domain, { ...flowOptions, previous: flow });
     surface.setMaps(domain, flow);
     debug.refresh();
+    sim.dispose();
+    sim = createSimulation(renderer, flow, state);
+    debug.setSimTexture(sim.texture);
+    apply();
     scene.add(object);
     object.visible = visible;
     return domain.stats;
@@ -127,6 +152,7 @@ export async function createRealisticRiver1({
     /** Un paso del río. Llamar en cada fotograma antes de `renderer.render`. */
     update(dt) {
       if (!state.enabled) return;
+      if (state.simulation) sim.update(dt);
       surface.update(dt, scene);
     },
     /** Pasa `state` al río tras cambiarlo a mano. */
@@ -137,11 +163,16 @@ export async function createRealisticRiver1({
      */
     setWind: surface.setWind,
     rebuild,
+    /** Vuelve a poner la simulación en la corriente base (borra los remolinos). */
+    resetSimulation: () => sim.reset(),
+    /** Simulación viva: pasos dados, dispatches por paso, uniformes y textura (ver sim.js). */
+    get simulation() { return sim; },
     /** Quita el río de la escena y libera sus materiales y texturas (la geometría sigue siendo de quien la cargó). */
     dispose() {
       object.removeFromParent();
       surface.dispose();
       debug.dispose();
+      sim.dispose();
       domain.texture.dispose();
     },
     // referencias internas, para depurar

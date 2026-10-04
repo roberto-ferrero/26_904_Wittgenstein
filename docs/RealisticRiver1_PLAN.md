@@ -4,7 +4,7 @@ Río con corriente visible para el visor de la escena v10 (Three.js r186, `WebGP
 cauce, remolinos en las márgenes y detrás de los obstáculos, y espuma que deja ver el comportamiento hidráulico. Se
 hace como módulo autocontenido y reutilizable, igual que [VolumetricSky1](../src/VolumetricSky1/README.md).
 
-Estado: **aprobado; en construcción**. Hecho: F0, F1, F2, F3.
+Estado: **aprobado; en construcción**. Hecho: F0, F1, F2, F3, F4.
 
 ---
 
@@ -156,7 +156,7 @@ Así aparecen sin colocarlos a mano las zonas de recirculación detrás del prom
 los remolinos en los entrantes de las orillas y la calle de vórtices de Kármán detrás de una piedra. Para piedras más
 pequeñas que la celda se añade un término de vórtices inyectados (estela procedural) que se apoya en el mismo campo.
 
-Coste estimado en la GPU del equipo de desarrollo: 0,3-0,6 ms por paso a 2 m (288 × 768, con el 25 % de celdas con agua).
+Medido (F4): ~0,8 ms por fotograma a 60 fps con 20 iteraciones de presión; la estimación inicial era 0,3-0,6 ms por paso a 2 m (288 × 768, con el 25 % de celdas con agua).
 Corre a paso fijo de 30 Hz con interpolación entre pasos, así que pesa la mitad a 60 fps. A 1 m de celda (calidad alta)
 se multiplica por cuatro.
 
@@ -236,7 +236,7 @@ Cada fase deja el visor funcionando, con captura desde "Camera" y aérea, y medi
 | **F1. Dominio** ✅ | Vista cenital, máscara, profundidad, distancia a la orilla, obstáculos desde las 520 rocas. Vistas de depuración. | Panel "Depuración" que pinta cada mapa sobre el agua. |
 | **F2. Corriente base** ✅ | Función de corriente con profundidad e islas, velocidad, vista LIC/flechas, comparación con `_flujo_*`. Primer material con normales desplazadas por el flow map. | El río ya fluye hacia la cámara, rodea las rocas y se acelera en los estrechamientos. Modo de calidad "bajo" terminado. |
 | **F3. Superficie** ✅ | Material completo: flow map sin latido, color por profundidad, orilla transparente, Fresnel con el entorno del cielo, viento, integración con la niebla. | Agua con aspecto final sin simulación viva; preset "Ilustración". |
-| **F4. Simulación viva** | Stable Fluids en compute con BFECC, vorticidad, proyección ponderada, rozamiento, paso fijo e interpolación. | Remolinos detrás del promontorio de la torre y en las orillas, visibles en la vista de vorticidad y en el agua. |
+| **F4. Simulación viva** ✅ | Stable Fluids en compute con BFECC, vorticidad, proyección ponderada, rozamiento, paso fijo e interpolación. | Remolinos detrás del promontorio de la torre y en las orillas, visibles en la vista de vorticidad y en el agua. |
 | **F5. Espuma** | Advección, fuentes (cizalla, convergencia, obstáculos, orilla, bajíos), textura y umbral. | Líneas de espuma que dibujan la corriente; control de carácter de espejo a hidráulico. |
 | **F6. Obstáculos en caliente** | `addObstacle` / `removeObstacle`, re-horneado incremental, botón de piedra de prueba en el panel. | Una piedra añadida en ejecución genera estela y espuma sin recargar. Guía para las piedras futuras. |
 | **F7. Reflejo de la escena** (opcional) | Reflejo plano a media resolución con capas, distorsión por normales; alternativa SSR si sale caro. | Torre y castillo reflejados como en la ilustración, con su coste medido. |

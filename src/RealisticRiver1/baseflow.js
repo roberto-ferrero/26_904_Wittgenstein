@@ -221,7 +221,7 @@ export function solveBaseFlow(domain, {
     nx, nz, cellSize: cell,
     origin,
     size: new THREE.Vector2(nx * cell, nz * cell),
-    psi, vx, vz, type,
+    psi, vx, vz, type, depth,
     texture,
     stats: {
       wetCells: nW,

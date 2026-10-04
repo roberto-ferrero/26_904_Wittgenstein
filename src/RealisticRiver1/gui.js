@@ -25,6 +25,17 @@ export function addRealisticRiver1Gui(river, parent = null) {
   gui.add(s, 'rippleSize', 2, 300, 1).name('tamaño ondas (m)').onChange(apply);
   gui.add(s, 'rippleStrength', 0, 1.5, 0.01).name('fuerza ondas').onChange(apply);
   gui.add(s, 'flowCycle', 0.5, 12, 0.1).name('ciclo del flow map (s)').onChange(apply);
+  const fSim = gui.addFolder('Remolinos (simulación)').close();
+  fSim.add(s, 'simulation').name('activa').onChange(apply);
+  fSim.add(s, 'vorticity', 0, 3, 0.01).name('confinamiento de vorticidad').onChange(apply);
+  fSim.add(s, 'relaxTime', 1, 120, 1).name('vuelta a la corriente base (s)').onChange(apply);
+  fSim.add(s, 'bankDrag', 0, 10, 0.05).name('rozamiento en orillas (1/s)').onChange(apply);
+  fSim.add(s, 'turbulence', 0, 5, 0.05).name('turbulencia junto a tierra').onChange(apply);
+  fSim.add(s, 'turbScale', 4, 120, 1).name('tamaño de la turbulencia (m)').onChange(apply);
+  fSim.add(s, 'viscosity', 0, 0.5, 0.01).name('viscosidad').onChange(apply);
+  fSim.add(s, 'pressureIterations', 2, 80, 2).name('iteraciones de presión').onChange(apply);
+  fSim.add(s, 'simRate', 10, 60, 1).name('pasos por segundo').onChange(apply);
+  fSim.add({ reset: () => river.resetSimulation() }, 'reset').name('⟲ Reiniciar los remolinos');
   gui.add(s, 'windRipples', 0, 1.5, 0.01).name('ondas de viento').onChange(apply);
   gui.add(s, 'windSize', 1, 40, 0.5).name('tamaño ondas de viento (m)').onChange(apply);
 
