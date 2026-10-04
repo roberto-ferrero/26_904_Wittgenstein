@@ -22,13 +22,17 @@ orillas y el choque con piedras. El agua lila calma de la ilustración es el con
 | F4. Simulación viva | Remolinos (Stable Fluids 2D en compute); las ondas siguen su velocidad | **Hecha** |
 | F5. Espuma | Espuma advectada con fuentes físicas, burbujas que siguen la corriente, control de carácter | **Hecha** |
 | F6. Obstáculos en caliente | `addObstacle` / `removeObstacle` sin perder los remolinos; piedras de prueba en el panel | **Hecha** |
-| F7. Reflejo de la escena | Reflejo plano opcional | Pendiente |
-| F8. Cierre | Presets, WebGL 2, `sampleVelocity` | Pendiente |
+| F7. Reflejo de la escena | Reflejo plano opcional | Aparcada: con aguas bravas (agua agitada y opaca) apenas se vería |
+| F8. Cierre | Conjuntos, alternativa para WebGL 2, `sampleVelocity`, documentación | **Hecha** |
 
 ## Copiarlo a otro proyecto
 
 1. Copia la carpeta `RealisticRiver1/` entera.
 2. Dependencias: `three` (r186 o compatible). `lil-gui` solo si usas el panel.
+3. No hay texturas que copiar: los mapas se hornean al cargar y la textura de burbujas se genera en código.
+4. Requisitos de la escena: una lámina de agua plana (malla) a la cota del agua, que cubra el cauce, y un terreno
+   cuyo lecho quede por debajo de esa cota donde hay agua. El sentido general del río se da con `flowDirection` si
+   no es +Z.
 
 ## Uso
 
@@ -90,7 +94,9 @@ renderer.setAnimationLoop(() => {
 | `obstacles` | Lista de obstáculos actuales. |
 | `rebuild()` | Vuelve a hornear el dominio y la corriente (tras mover el terreno o un obstáculo). La corriente parte de la solución anterior y la simulación conserva sus remolinos. Los rehorneados pedidos mientras hay uno en marcha se juntan en uno. Devuelve una promesa con las estadísticas. |
 | `debugViews` | Nombres de las vistas de depuración. |
-| `dispose()` | Quita el río de la escena y libera su material. La geometría sigue siendo de quien la cargó. |
+| `sampleVelocity(x, z)` | Velocidad del agua en m/s (x, z de la escena) para objetos que floten: la corriente base por la velocidad del río, inmediata y en CPU (sin los remolinos, que viven en la GPU). |
+| `simulationAvailable` | `false` con WebGL 2: sin simulación viva ni espuma. |
+| `dispose()` | Quita el río de la escena y libera sus materiales y texturas. La geometría sigue siendo de quien la cargó. |
 
 ### `RIVER_DEFAULTS`
 
@@ -279,6 +285,15 @@ espuma fina; de cerca y en vista aérea se ven las vetas de los rápidos y los a
   `envMapIntensity` solo actúa sobre el `envMap` del material), así que `reflections` regula el reflejo solo en el
   agua. Si el cielo rehace el entorno, el río lo vuelve a tomar en `update`.
 
+## WebGL 2
+
+La simulación y la espuma necesitan compute con texturas de almacenamiento, así que solo funcionan con el backend
+WebGPU. Con WebGL 2 (navegador sin WebGPU, o `?webgl` en la URL del visor para probarlo) el río sigue la corriente
+base: ondas con flow map, color por profundidad, orilla transparente y reflejos, sin remolinos vivos ni espuma; el
+panel lo indica. Comprobado hasta el horneado: la lectura de la vista cenital en WebGL espera a un fotograma visible
+(`requestAnimationFrame`), y el navegador de pruebas estaba oculto, así que el arranque completo con WebGL 2 queda por
+ver en una ventana normal.
+
 ## Integración con el cielo
 
 La lámina es un `MeshStandardNodeMaterial`, así que recibe sin código propio la perspectiva aérea y la niebla en capa
@@ -293,6 +308,9 @@ Medido en el visor de la escena v10 a 1920 × 1080 con la GPU sincronizada (`awa
 | Vista | Con el río | Sin el río |
 |---|---|---|
 | "Camera" | 10,9-11,4 ms (simulación y espuma) | 10,4 ms (sin simulación) |
+
+(Medido con la GPU libre. En la última comprobación de la F8 había otra carga en la GPU, ~60 % de uso con el visor
+parado, y todo el visor salió al doble: 21 ms sin el río y 24,5 ms con él.)
 | Aérea | 8,6 ms | 8,4 ms |
 
 Por fotograma el río es un solo dibujo de 44.322 triángulos. Con el flow map, las ondas de viento y el color por
@@ -310,7 +328,7 @@ surface.js          material TSL de la lámina
 domain.js           horneado del dominio: vista cenital, profundidad, distancia a la orilla, obstáculos
 baseflow.js         corriente base: función de corriente con profundidad e islas
 sim.js              simulación viva en compute: remolinos, cizalla, proyección por profundidad, espuma
-foamTexture.js      textura repetible de burbujas, generada al cargar
+foamTexture.js      textura repetible de burbujas y filamentos, generada al cargar
 testRock.js         piedras de prueba del panel y punto del agua en el centro de la vista
 debug.js            vistas de depuración de los mapas, la corriente y la vorticidad
 gui.js              panel lil-gui (opcional)

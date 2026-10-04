@@ -14,6 +14,7 @@ export function addRealisticRiver1Gui(river, parent = null) {
   const gui = parent ?? new GUI({ title: 'RealisticRiver1', width: 368 });
   const s = river.state;
   const apply = () => river.apply();
+  let fFoamNote = false;
 
   gui.add(s, 'character', 0, 1, 0.01).name('carácter (espejo → hidráulico)').onChange(apply);
   gui.addColor(s, 'colorShallow').name('color orilla').onChange(apply);
@@ -28,7 +29,12 @@ export function addRealisticRiver1Gui(river, parent = null) {
   gui.add(s, 'rippleStrength', 0, 1.5, 0.01).name('fuerza ondas').onChange(apply);
   gui.add(s, 'flowCycle', 0.5, 12, 0.1).name('ciclo del flow map (s)').onChange(apply);
   const fSim = gui.addFolder('Remolinos (simulación)').close();
-  fSim.add(s, 'simulation').name('activa').onChange(apply);
+  const simCtl = fSim.add(s, 'simulation').name('activa').onChange(apply);
+  if (!river.simulationAvailable) {
+    // con WebGL 2 no hay compute: se avisa y no se guarda en la URL
+    simCtl.name('activa (necesita WebGPU)').disable();
+    fFoamNote = true;
+  }
   fSim.add(s, 'vorticity', 0, 3, 0.01).name('confinamiento de vorticidad').onChange(apply);
   fSim.add(s, 'relaxTime', 1, 120, 1).name('vuelta a la corriente base (s)').onChange(apply);
   fSim.add(s, 'bankDrag', 0, 10, 0.05).name('rozamiento en orillas (1/s)').onChange(apply);
@@ -39,7 +45,9 @@ export function addRealisticRiver1Gui(river, parent = null) {
   fSim.add(s, 'pressureIterations', 2, 80, 2).name('iteraciones de presión').onChange(apply);
   fSim.add(s, 'simRate', 10, 60, 1).name('pasos por segundo').onChange(apply);
   fSim.add({ reset: () => river.resetSimulation() }, 'reset').name('⟲ Reiniciar los remolinos');
+  // (el título no cambia con el backend: forma parte de las claves de la URL y de los conjuntos)
   const fFoam = gui.addFolder('Espuma').close();
+  if (fFoamNote) fFoam.add({ aviso: 'necesita WebGPU (sin simulación no hay espuma)' }, 'aviso').name('Aviso').disable();
   fFoam.add(s, 'foamAmount', 0, 4, 0.05).name('cantidad').onChange(apply);
   fFoam.add(s, 'foamLife', 1, 120, 1).name('vida (s)').onChange(apply);
   fFoam.add(s, 'foamShear', 0, 5, 0.05).name('en remolinos y cizalla').onChange(apply);

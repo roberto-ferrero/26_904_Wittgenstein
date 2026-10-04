@@ -20,6 +20,7 @@ import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
  * - F5: espuma advectada en la simulación con fuentes físicas y pintada con burbujas que siguen la corriente;
  *   control de carácter, de espejo a hidráulico.
  * - F6: obstáculos en caliente (addObstacle / removeObstacle): rehorneado incremental sin perder los remolinos.
+ * - F8: alternativa para WebGL 2 (corriente base sin simulación) y sampleVelocity(x, z).
  * Aspecto por defecto: aguas bravas turquesa (las referencias de Roberto del 04/10/2026, en
  * "Claude working folder/referencias_rio/"); el aspecto calmo de la ilustración es el conjunto "Río de la ilustración".
  *
@@ -125,11 +126,17 @@ export async function createRealisticRiver1({
   const debug = createDebugMaterial(() => domain, () => flow, geometry, surface.uniforms);
 
   // ---------------------------------------------------------------- simulación viva (F4)
-  let sim = createSimulation(renderer, flow, state);
+  // necesita compute con texturas de almacenamiento: solo con el backend WebGPU. Con WebGL 2 el río sigue la
+  // corriente base, sin remolinos vivos ni espuma.
+  const canSimulate = renderer.backend?.isWebGPUBackend === true;
+  if (!canSimulate) state.simulation = false;
+  const makeSim = () => (canSimulate ? createSimulation(renderer, flow, state) : staticSimulation(flow));
+  let sim = makeSim();
   debug.setSimTexture(sim.texture, sim.foamTexture);
   scene.add(object);
 
   function apply() {
+    if (!canSimulate) state.simulation = false;
     object.visible = state.enabled;
     surface.apply();
     sim.applyState();
@@ -165,7 +172,7 @@ export async function createRealisticRiver1({
         debug.refresh();
         if (!sim.updateStatic(flow)) {
           sim.dispose();
-          sim = createSimulation(renderer, flow, state);
+          sim = makeSim();
           debug.setSimTexture(sim.texture, sim.foamTexture);
         }
         apply();
@@ -200,6 +207,16 @@ export async function createRealisticRiver1({
     debugViews: Object.keys(DEBUG_VIEWS),
     /** Dominio horneado: rejilla, mapas en CPU (`sdf`, `depth`, `obstacle`, `bed`, `wet`) y `texture` (ver domain.js). */
     get domain() { return domain; },
+    /** false con WebGL 2: sin simulación viva ni espuma (el río sigue la corriente base). */
+    simulationAvailable: canSimulate,
+    /**
+     * Velocidad del agua en (x, z), en m/s y ejes de la escena (x, z), para objetos que floten. Es la de la
+     * corriente base (inmediata, en CPU) por la velocidad del río; no incluye los remolinos de la simulación, que
+     * viven en la GPU.
+     */
+    sampleVelocity(x, z, out = new THREE.Vector2()) {
+      return flow.sample(x, z, out).multiplyScalar(state.flowSpeed * state.flowBoost);
+    },
     /** Corriente base: velocidad relativa (media 1) en CPU (`vx`, `vz`, `sample(x, z)`), ψ y `texture` (ver baseflow.js). */
     get flow() { return flow; },
     /** Texturas para los shaders o para otros efectos. */
@@ -239,5 +256,23 @@ export async function createRealisticRiver1({
     renderer,
     camera,
     surface,
+  };
+}
+
+/** Sustituto de la simulación cuando no hay compute (WebGL 2): la velocidad es la corriente base y no hay espuma. */
+function staticSimulation(flow) {
+  return {
+    texture: flow.texture,
+    foamTexture: flow.texture, // no se usa: la espuma queda apagada
+    origin: flow.origin.clone(),
+    size: flow.size.clone(),
+    uniforms: {},
+    steps: 0,
+    dispatchesPerStep: 0,
+    applyState() {},
+    reset() {},
+    update() {},
+    updateStatic() { return false; },
+    dispose() {},
   };
 }

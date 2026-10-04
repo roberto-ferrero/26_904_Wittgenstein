@@ -1,6 +1,8 @@
 # Panel de RealisticRiver1
 
-En el visor está en la carpeta **Agua**. Los controles irán creciendo con cada fase del plan.
+En el visor está en la carpeta **Agua**. Todos los controles (salvo la depuración y las piedras de prueba) se guardan
+en la URL y en los conjuntos de configuración. Conjuntos del visor: **Río de la ilustración** (agua lila calma, casi
+espejo) y **Aguas bravas intensas** (crecida); el arranque es de aguas bravas turquesa.
 
 | Control | Rango | Qué hace |
 |---|---|---|
@@ -16,7 +18,7 @@ En el visor está en la carpeta **Agua**. Los controles irán creciendo con cada
 | tamaño ondas (m) | 2-300 | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |
 | fuerza ondas | 0-1,5 | Cuánto deforman las ondas los reflejos; más donde el agua corre más. |
 | **Remolinos (simulación)** | | Carpeta con la simulación viva: |
-| · activa | sí/no | Sin ella las ondas siguen la corriente base, sin remolinos y sin coste de compute. |
+| · activa | sí/no | Sin ella las ondas siguen la corriente base, sin remolinos ni espuma y sin coste de compute. Con WebGL 2 sale desactivada ("necesita WebGPU"). |
 | · confinamiento de vorticidad | 0-3 | Mantiene vivos los remolinos. Muy alto, aparece ruido de celda. |
 | · vuelta a la corriente base (s) | 1-120 | Corto, el río vuelve enseguida a la corriente media y hay menos remolinos; largo, viven más. |
 | · rozamiento en orillas (1/s) | 0-10 | Cuánto frena el agua junto a tierra: más cizalla y más remolinos en las orillas. |

@@ -35,10 +35,12 @@ const lineal = ( rgb ) => new THREE.Color().setRGB( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ]
 
 // ---------------------------------------------------------------- Arranque: cortina con los pasos de la carga
 
-const ui = createUi( document.body, navigator.gpu ? 'WebGPU' : 'WebGL2' );
+// ?webgl en la URL fuerza el backend WebGL 2 (para probar la alternativa sin WebGPU)
+const forzarWebGL = new URLSearchParams( location.search ).has( 'webgl' );
+const ui = createUi( document.body, navigator.gpu && ! forzarWebGL ? 'WebGPU' : 'WebGL2' );
 await ui.step( 'Iniciando el renderizador WebGPU…', 0.04 );
 
-const renderer = new THREE.WebGPURenderer( { antialias: true } );
+const renderer = new THREE.WebGPURenderer( { antialias: true, forceWebGL: forzarWebGL } );
 renderer.setPixelRatio( Math.min( window.devicePixelRatio, 2 ) );
 renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.toneMapping = THREE.AgXToneMapping;

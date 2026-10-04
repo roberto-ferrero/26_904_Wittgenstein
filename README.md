@@ -32,8 +32,9 @@ Necesita un navegador con WebGPU (Chrome o Edge 113+); sin él, Three.js cae a W
   hacia el oeste, parecido al sol de la escena de Blender) y con la orientación del escenario a 0 (−Z al norte); con
   la orientación se elige hacia dónde mira el escenario sin moverlo. El cielo mueve el sol (color, fuerza y dirección,
   manteniendo la caja de sombras sobre el terreno), la luz hemisférica y el mapa de entorno.
-- **Río: [RealisticRiver1](src/RealisticRiver1/README.md)**, módulo reutilizable en construcción para un río con
-  corriente, remolinos y espuma ([plan](docs/RealisticRiver1_PLAN.md)). Hecho: mapas del cauce horneados al cargar,
+- **Río: [RealisticRiver1](src/RealisticRiver1/README.md)**, módulo reutilizable para un río con corriente,
+  remolinos y espuma ([plan](docs/RealisticRiver1_PLAN.md)). Con WebGL 2 (`?webgl` para probarlo) va sin remolinos ni
+  espuma. Hecho: mapas del cauce horneados al cargar,
   corriente base con las ondas desplazadas por ella (de norte a sur, hacia la cámara), color por profundidad, orilla
   transparente, ondas de viento y reflejos del cielo regulables. Conjunto "Río de la ilustración" en el panel. Remolinos con una simulación viva en compute que siguen las ondas, y espuma con un control de carácter (de
   espejo a hidráulico); aspecto por defecto de aguas bravas turquesa (referencias de Roberto) y conjuntos "Río de la ilustración" y
@@ -62,7 +63,7 @@ src/core/urlState.js  estado del panel y de la cámara en la URL
 src/presets/          conjuntos de configuración del panel (mismas claves que la URL)
 src/escena/           agua (adaptadores del río) y vegetación
 src/VolumetricSky1/   cielo físico con nubes volumétricas (módulo autocontenido, con su README)
-src/RealisticRiver1/  río con corriente, remolinos y espuma (módulo autocontenido, con su README; en construcción)
+src/RealisticRiver1/  río con corriente, remolinos y espuma (módulo autocontenido, con su README)
 docs/                 planes de trabajo
 public/escena/        assets de la escena v10 (glb con Draco, datos y vegetación)
 public/draco/         decodificador Draco
