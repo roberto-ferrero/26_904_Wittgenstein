@@ -1,16 +1,44 @@
 import * as THREE from 'three/webgpu';
 import { attribute, mix, uniform, texture, uv, vec2, time, normalMap } from 'three/tsl';
+import { createRealisticRiver1 } from '../RealisticRiver1/index.js';
+import { addRealisticRiver1Gui } from '../RealisticRiver1/gui.js';
 
 // Agua del río, aislada del resto de la escena para poder sustituirla.
 //
-// La idea final es un fluido realista recorriendo el cauce. Cuando llegue, basta con
-// escribir otra función con la misma firma (recibe la malla "Agua" del .glb y los datos
-// de la escena, devuelve { objeto, actualizar, gui? }) y cambiarla en main.js.
-// La malla original sirve de referencia para la forma del cauce y la cota del agua;
+// Cada variante recibe la malla "Agua" del .glb y los datos de la escena y devuelve { objeto, actualizar, gui? };
+// main.js elige una. La malla original sirve de referencia para la forma del cauce y la cota del agua;
 // desde la v4 lleva por vértice _profundidad, _flujo_x, _flujo_z, _velocidad y _a_lo_largo, y un
-// segundo UV (uv1) que sigue el cauce, pensados para esa corriente. Esta versión solo usa _profundidad.
+// segundo UV (uv1) que sigue el cauce.
+//
+// - crearRioRealista: el módulo RealisticRiver1 (src/RealisticRiver1/), el que se usa.
+// - crearAguaPlana: el agua plana de antes, como alternativa.
 
 const lineal = ( rgb ) => new THREE.Color().setRGB( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], THREE.LinearSRGBColorSpace );
+
+/** Río con el módulo RealisticRiver1. `entorno` = { renderer, scene, camera }. */
+export async function crearRioRealista( mallaOriginal, datos, { renderer, scene, camera } ) {
+
+	const base = lineal( datos.agua.color_lineal );
+	const rio = await createRealisticRiver1( {
+		renderer, scene, camera,
+		water: mallaOriginal,
+		settings: {
+			// los mismos valores que el agua plana: el color de la escena aclarado en la orilla y oscurecido en lo hondo
+			colorShallow: base.clone().multiplyScalar( 1.35 ).getHex( THREE.SRGBColorSpace ),
+			colorDeep: base.clone().multiplyScalar( 0.55 ).getHex( THREE.SRGBColorSpace ),
+			roughness: datos.agua.rugosidad,
+		},
+	} );
+	rio.object.name = 'Agua';
+
+	return {
+		objeto: rio.object,
+		rio,
+		actualizar( dt ) { rio.update( dt ); },
+		gui( carpeta ) { addRealisticRiver1Gui( rio, carpeta ); },
+	};
+
+}
 
 export function crearAguaPlana( mallaOriginal, datos ) {
 

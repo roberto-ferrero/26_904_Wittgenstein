@@ -4,7 +4,7 @@ Río con corriente visible para el visor de la escena v10 (Three.js r186, `WebGP
 cauce, remolinos en las márgenes y detrás de los obstáculos, y espuma que deja ver el comportamiento hidráulico. Se
 hace como módulo autocontenido y reutilizable, igual que [VolumetricSky1](../src/VolumetricSky1/README.md).
 
-Estado: **propuesta, pendiente de aprobación**. Todavía no se ha tocado código del visor.
+Estado: **aprobado; en construcción**. Hecho: F0.
 
 ---
 
@@ -231,7 +231,7 @@ Cada fase deja el visor funcionando, con captura desde "Camera" y aérea, y medi
 
 | Fase | Qué se hace | Entregable |
 |---|---|---|
-| **F0. Esqueleto** | Carpeta del módulo, adaptador en `src/escena/agua.js`, material que reproduce el agua actual, panel vacío y medición de partida. | El visor igual que hoy pero con el agua servida por RealisticRiver1. |
+| **F0. Esqueleto** ✅ | Carpeta del módulo, adaptador en `src/escena/agua.js`, material que reproduce el agua actual, panel vacío y medición de partida. | El visor igual que hoy pero con el agua servida por RealisticRiver1. |
 | **F1. Dominio** | Vista cenital, máscara, profundidad, distancia a la orilla, obstáculos desde las 520 rocas. Vistas de depuración. | Panel "Depuración" que pinta cada mapa sobre el agua. |
 | **F2. Corriente base** | Función de corriente con profundidad e islas, velocidad, vista LIC/flechas, comparación con `_flujo_*`. Primer material con normales desplazadas por el flow map. | El río ya fluye hacia la cámara, rodea las rocas y se acelera en los estrechamientos. Modo de calidad "bajo" terminado. |
 | **F3. Superficie** | Material completo: flow map sin latido, color por profundidad, orilla transparente, Fresnel con el entorno del cielo, viento, integración con la niebla. | Agua con aspecto final sin simulación viva; preset "Ilustración". |

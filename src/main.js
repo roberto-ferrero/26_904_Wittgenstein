@@ -8,7 +8,7 @@ import { positionLocal, positionGeometry, modelWorldMatrix, vec4 } from 'three/t
 
 import { createUi } from './core/ui.js';
 import { createUrlState } from './core/urlState.js';
-import { crearAguaPlana } from './escena/agua.js';
+import { crearRioRealista } from './escena/agua.js';
 import { crearVegetacion, desplazamientoViento } from './escena/vegetacion.js';
 import { createVolumetricSky1 } from './VolumetricSky1/index.js';
 import { addVolumetricSky1Gui } from './VolumetricSky1/gui.js';
@@ -100,10 +100,6 @@ terreno.traverse( ( o ) => {
 if ( mallaAgua ) mallaAgua.removeFromParent();
 sinMetal( terreno );
 scene.add( terreno );
-
-// El agua va en su propio objeto, fácil de sustituir por la simulación de fluido.
-const agua = mallaAgua ? crearAguaPlana( mallaAgua, datos ) : null;
-if ( agua ) scene.add( agua.objeto );
 
 // ---------------------------------------------------------------- Piezas
 
@@ -207,6 +203,11 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.maxDistance = 2500;
 controls.update();
+
+// ---------------------------------------------------------------- Agua
+
+// El agua va en su propio objeto, fácil de sustituir: el río de RealisticRiver1 (crearAguaPlana es la alternativa).
+const agua = mallaAgua ? await crearRioRealista( mallaAgua, datos, { renderer, scene, camera } ) : null;
 
 function volverACamera() {
 	camera.position.copy( posInicial );
