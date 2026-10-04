@@ -222,7 +222,7 @@ await ui.step( 'Calculando el cielo y las nubes volumétricas…', 0.45 );
 const aSol = haciaSol;
 const sky = await createVolumetricSky1( {
 	renderer, scene, camera, sun: sol, hemi,
-	fog: true, // la única niebla de la escena: FogExp2 del cielo con el color de su horizonte
+	fog: true, // la única niebla de la escena: la perspectiva aérea del cielo (scene.fogNode)
 	settings: {
 		sunMode: 'Manual',
 		sunElevation: THREE.MathUtils.radToDeg( Math.asin( aSol.y ) ),
@@ -230,7 +230,10 @@ const sky = await createVolumetricSky1( {
 		sunStrength: il.sol.intensidad_threejs_sugerida,
 		ambientStrength: 0.8,
 		environmentIntensity: 0.6,
-		fogDensity: 0.0004, // ≈ la niebla por distancia que tenía el visor de la v10 (0,00035)
+		// bruma baja sobre el río: la nieblina de baja cota que tenía el visor de la v10
+		hazeDensity: 0.00175,
+		hazeBase: datos.terreno.cota_agua_y,
+		hazeFalloff: 11,
 	},
 } );
 

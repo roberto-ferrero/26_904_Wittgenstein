@@ -13,7 +13,8 @@ import { directionFromAltAz, equatorialToWorld, moonIllumination, moonPosition, 
  * - Nubes volumétricas con raymarching a resolución reducida y acumulación temporal (clouds.js).
  * - Estrellas orientadas con el tiempo sidéreo y luna con su fase.
  * - Opcional: color, fuerza y dirección de una DirectionalLight (el sol) y de una HemisphereLight,
- *   mapa de entorno PMREM con el cielo y las nubes, y niebla FogExp2 con el color del horizonte.
+ *   mapa de entorno PMREM con el cielo y las nubes, y perspectiva aérea (`scene.fogNode`): la escena se funde con
+ *   el cielo con la misma atmósfera que lo pinta, más una bruma baja opcional.
  *
  * Uso mínimo (ver README.md):
  *   const sky = await createVolumetricSky1({ renderer, scene, camera, sun, hemi });
@@ -63,7 +64,12 @@ export const SKY_DEFAULTS = {
   environmentIntensity: 1,
   stars: 1,
   cloudLight: 1, // brillo de las nubes respecto al cielo
-  fogDensity: 0.0012,
+  // perspectiva aérea (fogNode de la escena)
+  aerial: true,
+  aerialStrength: 5, // multiplica la atmósfera real (a escala de un valle apenas se notaría)
+  hazeDensity: 0, // bruma baja: densidad (1/m) en hazeBase; 0 = sin bruma
+  hazeBase: 0, // altura (y) de referencia de la bruma, p. ej. la cota del agua
+  hazeFalloff: 50, // m: la bruma se divide por e cada hazeFalloff metros de subida
   // lecturas (las rellena update)
   sunAltAz: '',
   moonInfo: '',
@@ -83,8 +89,8 @@ const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1
  *   (la posición se mueve alrededor de `sun.target`, a la distancia que ya tenía: las sombras no cambian de encuadre)
  * @param {THREE.HemisphereLight} [o.hemi] luz ambiente: el cielo pone su color y fuerza
  * @param {boolean} [o.environment=true] genera `scene.environment` (PMREM) con el cielo y las nubes
- * @param {boolean} [o.fog=true] pone en la escena una niebla FogExp2 con el color del horizonte;
- *   con `false` la niebla no se toca y el color queda en `sky.fogColor` para usarlo en una niebla propia
+ * @param {boolean} [o.fog=true] pone la perspectiva aérea del cielo como `scene.fogNode`; con `false` la niebla
+ *   de la escena no se toca (el nodo queda en `sky.fogNode` para combinarlo a mano)
  * @param {object} [o.settings] valores iniciales del cielo (claves de SKY_DEFAULTS)
  * @param {object} [o.cloudSettings] valores iniciales de las nubes (claves de `sky.clouds.state`)
  * @param {object} [o.places] lista de lugares { nombre: { lat, lon, tz } | null }
@@ -158,7 +164,8 @@ export async function createVolumetricSky1({
   let envPending = true;
   const fallbackEnv = scene.environment;
   const fallbackEnvIntensity = scene.environmentIntensity;
-  const fallbackFog = scene.fog;
+  const fallbackFogNode = scene.fogNode;
+  if (fog) scene.fogNode = atm.fogNode;
   const fallbackBackground = scene.background;
   const sunDistance = sun ? sun.position.distanceTo(sun.target.position) || 100 : 100;
 
@@ -167,10 +174,6 @@ export async function createVolumetricSky1({
   const moonDir = new THREE.Vector3();
   const sunColor = new THREE.Color();
   const tmpColor = new THREE.Color();
-  const fogColor = new THREE.Color();
-  const fogDay = new THREE.Color(0xb9c9d8);
-  const fogNight = new THREE.Color(0x05080d);
-  const fogSunset = new THREE.Color(0xd7a27c);
   let clockTime = 0;
 
   function currentDate() {
@@ -260,9 +263,13 @@ export async function createVolumetricSky1({
     light.ambient.copy(ambientNight).lerp(ambientDay, info.dayFactor).multiplyScalar(state.cloudLight * 0.9)
       .lerp(tmpColor.copy(sunColor).multiplyScalar(0.5 * state.cloudLight), smooth(20, 0, s.altitude) * info.dayFactor * 0.5);
 
-    // niebla / perspectiva aérea: color del horizonte según la hora
-    const sunset = smooth(25, 2, s.altitude) * smooth(-6, 2, s.altitude);
-    fogColor.copy(fogNight).lerp(fogDay, info.dayFactor).lerp(fogSunset, sunset * 0.6);
+    // perspectiva aérea
+    const ap = atm.aerial;
+    ap.enabled.value = state.enabled && state.aerial ? 1 : 0;
+    ap.strength.value = state.aerialStrength;
+    ap.hazeDensity.value = state.hazeDensity;
+    ap.hazeBase.value = state.hazeBase;
+    ap.hazeFalloff.value = Math.max(state.hazeFalloff, 0.1);
 
     if (state.enabled) {
       if (sun) {
@@ -277,11 +284,6 @@ export async function createVolumetricSky1({
       if (hemi) {
         hemi.intensity = state.ambientStrength * (0.08 + 0.92 * info.dayFactor);
         hemi.color.setRGB(0.55 + 0.25 * sunColor.r, 0.65 + 0.2 * sunColor.g, 0.85 + 0.1 * sunColor.b);
-      }
-      if (fog) {
-        scene.fog = scene.fog?.isFogExp2 ? scene.fog : new THREE.FogExp2(fogColor, state.fogDensity);
-        scene.fog.color.copy(fogColor);
-        scene.fog.density = state.fogDensity * (0.6 + 0.4 * state.turbidity / 3);
       }
       scene.background = null;
       if (environment) scene.environmentIntensity = state.environmentIntensity;
@@ -332,7 +334,7 @@ export async function createVolumetricSky1({
       scene.environment = fallbackEnv;
       scene.environmentIntensity = fallbackEnvIntensity;
       scene.background = fallbackBackground;
-      if (fog) scene.fog = fallbackFog;
+      atm.aerial.enabled.value = 0;
       moonLight.intensity = 0;
     } else {
       lastEnvSun.set(0, -2, 0); // fuerza regenerar el entorno
@@ -356,8 +358,8 @@ export async function createVolumetricSky1({
     atmosphere: atm,
     sunDirection: sunDir,
     sunColor,
-    /** Color del horizonte (lineal), para teñir una niebla propia cuando `fog` es false. */
-    fogColor,
+    /** Nodo de la perspectiva aérea (el que se pone en `scene.fogNode` con `fog: true`). */
+    fogNode: atm.fogNode,
     places: Object.keys(places),
     sunModes: SUN_MODES,
     apply,
@@ -389,7 +391,7 @@ export async function createVolumetricSky1({
       scene.environment = fallbackEnv;
       scene.environmentIntensity = fallbackEnvIntensity;
       scene.background = fallbackBackground;
-      if (fog) scene.fog = fallbackFog;
+      if (fog) scene.fogNode = fallbackFogNode;
     },
   };
 }

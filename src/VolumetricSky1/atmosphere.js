@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import {
-  Fn, If, Loop, abs, acos, atan, cameraPosition, clamp, cos, dot, exp, float, int, max, min, mix, normalize, positionWorld,
+  Fn, If, Loop, abs, acos, atan, cameraPosition, cameraWorldMatrix, clamp, cos, dot, exp, float, int, max, min, mix, normalize, output, positionView, positionWorld,
   pow, select, sign, sin, smoothstep, sqrt, texture, uniform, uv, vec2, vec3, vec4,
 } from 'three/tsl';
 
@@ -13,6 +13,7 @@ import {
  *   término de dispersión múltiple aproximado. Solo se recalcula cuando cambian el sol o los parámetros.
  * - **Cúpula** que lee la LUT según la dirección de vista y añade el disco solar con oscurecimiento al borde.
  * - `transmittance(altitudDeg)` en CPU con el mismo modelo, para el color de la luz del sol.
+ * - `fogNode`: perspectiva aérea de la escena con la misma atmósfera y la LUT (ver más abajo).
  */
 const RG = 6360; // km
 const RT = 6460; // km
@@ -154,20 +155,25 @@ export function createAtmosphere(renderer) {
   lutMat.fragmentNode = lutFn();
   const lutQuad = new THREE.QuadMesh(lutMat);
 
+  /** Radiancia del cielo (LUT) en una dirección del mundo (nodo TSL). */
+  const skyRadiance = (dir) => {
+    const el = atan(dir.y, sqrt(dir.x.mul(dir.x).add(dir.z.mul(dir.z))));
+    const viewAz = atan(dir.z, dir.x);
+    const sunAz = atan(u.sunDir.z, u.sunDir.x);
+    const dAz = abs(viewAz.sub(sunAz));
+    const rel = min(dAz, float(2 * Math.PI).sub(dAz));
+    const xv0 = sign(el).mul(sqrt(abs(el).div(Math.PI / 2)));
+    const xv = mix(xv0, max(xv0, 0.0), u.horizonFill);
+    const lutUV = vec2(rel.div(Math.PI), xv.mul(0.5).add(0.5));
+    return texture(lutRT.texture, lutUV).rgb.mul(u.brightness);
+  };
+
   // ------------------------------------------------------------------ cúpula de cielo
   function makeDome() {
     const mat = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, depthWrite: false, fog: false });
     const color = Fn(() => {
       const dir = normalize(positionWorld.sub(cameraPosition));
-      const el = atan(dir.y, sqrt(dir.x.mul(dir.x).add(dir.z.mul(dir.z))));
-      const viewAz = atan(dir.z, dir.x);
-      const sunAz = atan(u.sunDir.z, u.sunDir.x);
-      const dAz = abs(viewAz.sub(sunAz));
-      const rel = min(dAz, float(2 * Math.PI).sub(dAz));
-      const xv0 = sign(el).mul(sqrt(abs(el).div(Math.PI / 2)));
-      const xv = mix(xv0, max(xv0, 0.0), u.horizonFill);
-      const lutUV = vec2(rel.div(Math.PI), xv.mul(0.5).add(0.5));
-      const sky = texture(lutRT.texture, lutUV).rgb.mul(u.brightness);
+      const sky = skyRadiance(dir);
       // disco solar (0,53°) con oscurecimiento al borde, atenuado por la atmósfera (color en CPU)
       const cosA = dot(dir, normalize(u.sunDir));
       const r = clamp(acos(clamp(cosA, -1.0, 1.0)).div(0.00465), 0.0, 1.0);
@@ -191,6 +197,47 @@ export function createAtmosphere(renderer) {
   let dirty = true;
   const lastSun = new THREE.Vector3(0, -2, 0);
 
+  // ------------------------------------------------------------------ perspectiva aérea (fogNode de la escena)
+  // Para cada píxel, la atmósfera entre la cámara y la superficie:
+  // - transmitancia por canal T = exp(−τ), con τ = (β_R·ρ_R + β_M·ρ_M) · d · fuerza + bruma baja, donde ρ es la
+  //   densidad media a lo largo del rayo de cada capa exponencial (Rayleigh 8 km, Mie 1,2 km y la bruma, con su
+  //   cota y su caída), integrada de forma analítica;
+  // - luz dispersada hacia la cámara = radiancia del cielo en esa misma dirección (la LUT) · (1 − T): es la luz
+  //   que trae el resto del rayo hasta el horizonte, así que lo lejano se funde con el cielo que tiene detrás,
+  //   con el brillo hacia el sol y los colores del atardecer que ya calcula el cielo.
+  // `fuerza` exagera la atmósfera real (a escala de unos km apenas se nota) para dar la bruma de un valle.
+  const ap = {
+    enabled: uniform(1),
+    strength: uniform(5),
+    hazeDensity: uniform(0), // 1/m en la cota de la bruma
+    hazeBase: uniform(0), // altura (y) de referencia de la bruma
+    hazeFalloff: uniform(50), // m: la densidad se divide por e cada `hazeFalloff` metros de subida
+  };
+  // media de exp(−(y − base)/H) a lo largo de un tramo de altura yc → yp
+  const avgExp = (yc, yp, base, H) => {
+    const ec = exp(clamp(yc.sub(base).div(H).negate(), -60.0, 60.0));
+    const ep = exp(clamp(yp.sub(base).div(H).negate(), -60.0, 60.0));
+    const dy = yp.sub(yc);
+    return select(abs(dy).lessThan(0.01), ec, ec.sub(ep).mul(H).div(dy));
+  };
+  const aerialFog = Fn(() => {
+    // desde la posición en espacio de vista (la misma que se proyecta): incluye instancias y desplazamientos
+    // de vértices (viento), que positionWorld no siempre recoge
+    const toFrag = cameraWorldMatrix.mul(vec4(positionView, 0.0)).xyz.toVar();
+    const d = toFrag.length().toVar();
+    const dir = toFrag.div(max(d, 1e-4));
+    const yc = cameraPosition.y;
+    const yp = yc.add(toFrag.y);
+    const zero = float(0.0);
+    const rhoR = avgExp(yc, yp, zero, float(8000.0));
+    const rhoM = avgExp(yc, yp, zero, float(1200.0));
+    const tauAtm = u.betaR.mul(rhoR).add(vec3(u.mieExt).mul(rhoM)).mul(d.mul(0.001)).mul(ap.strength);
+    const tauHaze = ap.hazeDensity.mul(d).mul(avgExp(yc, yp, ap.hazeBase, ap.hazeFalloff));
+    const T = exp(tauAtm.add(tauHaze).mul(ap.enabled).negate());
+    return vec4(output.rgb.mul(T).add(skyRadiance(dir).mul(vec3(1.0).sub(T))), output.a);
+  });
+  const fogNode = aerialFog();
+
   function apply() {
     u.betaR.value.set(...BETA_R).multiplyScalar(params.rayleighScale);
     u.mieSca.value = BETA_M_SCA * params.mieScale;
@@ -208,6 +255,11 @@ export function createAtmosphere(renderer) {
     dome,
     envDome,
     uniforms: u,
+    /** Uniformes de la perspectiva aérea: enabled, strength, hazeDensity, hazeBase, hazeFalloff. */
+    aerial: ap,
+    /** Nodo para `scene.fogNode`: perspectiva aérea con la atmósfera del cielo. */
+    fogNode,
+    skyRadiance,
     lutTexture: lutRT.texture,
     apply,
     /** Actualiza el sol; recalcula la LUT si hace falta (devuelve true si la ha recalculado). */

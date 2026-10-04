@@ -31,9 +31,10 @@ Necesita un navegador con WebGPU (Chrome o Edge 113+); sin él, Three.js cae a W
   al cielo equirectangular. Aquí arranca con el sol manual en la dirección de la escena de Blender (34° de elevación,
   acimut ~307°); en el panel se puede pasar a fecha, hora y lugar. El cielo mueve el sol (color, fuerza y dirección,
   manteniendo la caja de sombras sobre el terreno), la luz hemisférica y el mapa de entorno.
-- **Niebla**: la única es la del cielo, una `FogExp2` con el color de su horizonte (densidad en la carpeta
-  "Atmósfera y luz" del cielo). La niebla por distancia y de baja cota del visor de la v10 se ha quitado.
-- **Panel** lil-gui replegado por defecto, con la paleta verde: rendimiento, cámara, cielo (sol, atmósfera, niebla y nubes),
+- **Atmósfera sobre la escena**: la perspectiva aérea de VolumetricSky1, con la misma atmósfera que pinta el cielo,
+  y su bruma baja sobre el río (densidad 0,00175 en la cota del agua, caída de 11 m, los valores del visor de la v10).
+  Se ajusta en Cielo › "Perspectiva aérea y bruma". La niebla propia del visor de la v10 se ha quitado.
+- **Panel** lil-gui replegado por defecto, con la paleta verde: rendimiento, cámara, cielo (sol, atmósfera, perspectiva aérea y nubes),
   luz, agua, vegetación y visibilidad.
 
 ## Rendimiento
