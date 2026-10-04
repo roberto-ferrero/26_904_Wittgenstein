@@ -230,18 +230,21 @@ const sky = await createVolumetricSky1( {
 		sunStrength: il.sol.intensidad_threejs_sugerida,
 		ambientStrength: 0.8,
 		environmentIntensity: 0.6,
-		// bruma baja sobre el río: la nieblina de baja cota que tenía el visor de la v10
-		hazeDensity: 0.00175,
-		hazeBase: datos.terreno.cota_agua_y,
-		hazeFalloff: 11,
+		// niebla en capa sobre el río: la nieblina de baja cota que tenía el visor de la v10 (densidad 0,00175 en la
+		// cota del agua y se divide por e cada 11 m de subida)
+		fogDensity: 0.00175,
+		fogBottom: -20,
+		fogTop: datos.terreno.cota_agua_y,
+		fogFade: 11,
 	},
 } );
 
 // ---------------------------------------------------------------- GUI (replegada por defecto, como en Whale)
 
 await ui.step( 'Preparando el panel…', 0.55 );
-const gui = new GUI( { title: "Wittgenstein Castle" } );
+const gui = new GUI( { title: 'Wittgenstein Castle', width: 368 } ); // 50 % más ancho que el de lil-gui (245 px)
 gui.close();
+gui.add( { actualizar: () => sky.refresh() }, 'actualizar' ).name( '↻ Actualizar (vuelve a aplicar todo)' );
 
 const fRend = gui.addFolder( 'Rendimiento' ).close();
 const opts = { pixelRatio: renderer.getPixelRatio(), sombras: true };
@@ -251,11 +254,10 @@ const fCam = gui.addFolder( 'Cámara' ).close();
 fCam.add( { volver: volverACamera }, 'volver' ).name( 'Volver a "Camera"' );
 fCam.add( camera, 'fov', 10, 75, 0.1 ).name( 'fov vertical' ).onChange( () => camera.updateProjectionMatrix() );
 
-addVolumetricSky1Gui( sky, gui ).close();
-
-const fLuz = gui.addFolder( 'Luz y exposición' ).close();
-fLuz.add( renderer, 'toneMappingExposure', 0.2, 3, 0.01 ).name( 'exposición' );
-fLuz.add( opts, 'sombras' ).onChange( ( v ) => { sol.castShadow = v; } );
+// Cielo e iluminación, Atmósfera y nubes, y Niebla en capa: todo lo de la luz y la atmósfera está aquí y solo aquí.
+const panelCielo = addVolumetricSky1Gui( sky, gui );
+panelCielo.sky.add( opts, 'sombras' ).name( 'Sombras del sol' ).onChange( ( v ) => { sol.castShadow = v; } );
+for ( const f of [ panelCielo.sky, panelCielo.atmosphere, panelCielo.clouds, panelCielo.fog ] ) f.close();
 
 if ( agua?.gui ) agua.gui( gui.addFolder( 'Agua' ).close() );
 vegetacion.gui( gui.addFolder( 'Vegetación' ).close() );

@@ -13,11 +13,11 @@ módulo que se copia tal cual a otro proyecto.
 - **Noche**: estrellas orientadas con el tiempo sidéreo y luna con su fase.
 - **Perspectiva aérea** (`scene.fogNode`): cada píxel de la escena se atenúa por canal con la misma atmósfera
   (Rayleigh y Mie, densidad según la altura) y recibe la luz del cielo que tiene detrás, así que lo lejano se
-  vuelve azulado, se aclara hacia el sol y se tiñe al atardecer. Incluye una bruma baja opcional (densidad,
-  cota y caída) iluminada igual.
+  vuelve azulado, se aclara hacia el sol y se tiñe al atardecer. Incluye una **niebla en capa** opcional (densidad,
+  cota baja, cota alta y transición) iluminada igual.
 - **Luz de la escena** (opcional): color, fuerza y dirección de tu `DirectionalLight` y de tu
   `HemisphereLight`, y mapa de entorno PMREM con el cielo y las nubes.
-- **Panel lil-gui** opcional.
+- **Panel lil-gui** opcional, con solo los parámetros relevantes. Guía de cada control: [GUIA_PANEL.md](GUIA_PANEL.md).
 
 ## Copiarlo a otro proyecto
 
@@ -93,8 +93,12 @@ const sky = await createVolumetricSky1({
 - `horizonFill` (activo por defecto) repite el color del horizonte por debajo de él, para escenas con suelo
   finito. Desactivado, se ve el suelo del planeta (casi negro), como en un mar hasta el horizonte.
 - Perspectiva aérea: `aerialStrength` multiplica la atmósfera real (5 por defecto; con 1, a escala de un valle
-  casi no se nota). `hazeDensity` (1/m), `hazeBase` (y) y `hazeFalloff` (m) dan la bruma baja; con densidad 0 no hay.
+  casi no se nota). `fogDensity` (1/m), `fogBottom` y `fogTop` (cotas, y) y `fogFade` (m de transición) dan la niebla en capa;
+  con densidad 0 no hay.
   La distancia sale de la posición en espacio de vista, así que incluye instancias y vértices desplazados (viento).
+- Los uniformes que comparten muchos materiales (los de la perspectiva aérea están en todos) van en `renderGroup`:
+  en el grupo por defecto un cambio no llegaba a todos los objetos hasta que otra cosa forzaba la actualización.
+- `sky.refresh()` vuelve a aplicar todo (es el botón ↻ Actualizar del panel de 26_904).
 - Coste medido en 26_904 a 1920 × 1080: unos 2,7 ms por fotograma con los valores por defecto; la perspectiva
   aérea añade menos de 0,5 ms.
 - Regenerar el ruido de las nubes: `node VolumetricSky1/tools/gen-noise.mjs`.
@@ -106,7 +110,7 @@ VolumetricSky1.js   createVolumetricSky1: sol, luna, estrellas, luces, entorno y
 atmosphere.js       atmósfera física (LUT + cúpula) y transmitancia del sol en CPU
 clouds.js           nubes volumétricas (raymarching, acumulación temporal, sombra de nubes)
 astro.js            posición del sol y la luna, fase lunar, salida y puesta
-gui.js              panel lil-gui opcional
+gui.js              panel lil-gui opcional (GUIA_PANEL.md explica cada control)
 index.js            exportaciones
 textures/           ruido de las nubes (64³ Perlin-Worley y mapa de clima 256²)
 tools/gen-noise.mjs genera las texturas de ruido

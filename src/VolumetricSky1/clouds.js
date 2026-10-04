@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import {
   Break, Fn, If, Loop, cameraPosition, clamp, dot, exp, float, fract, int, max, min, mix, normalize, positionWorld,
-  screenCoordinate, screenUV, select, sin, smoothstep, texture, texture3D, uniform, uv, vec2, vec3, vec4,
+  renderGroup, screenCoordinate, screenUV, select, sin, smoothstep, texture, texture3D, uniform, uv, vec2, vec3, vec4,
 } from 'three/tsl';
 
 /**
@@ -22,6 +22,11 @@ import {
  * Las texturas viajan con el módulo (carpeta `textures/`): `new URL(…, import.meta.url)` hace que Vite
  * (u otro bundler) las copie al build sin tocar `public/`.
  */
+// Uniformes compartidos por varios materiales (la perspectiva aérea está en todos los de la escena): en el grupo
+// `renderGroup` se suben una vez por render. En el grupo por defecto (por objeto) un cambio no llegaba a todos los
+// materiales y la escena se veía con valores mezclados hasta que otra cosa forzaba la actualización.
+const U = (v) => uniform(v).setGroup(renderGroup);
+
 const NOISE_URL = new URL('./textures/cloud_noise_64.bin', import.meta.url);
 const WEATHER_URL = new URL('./textures/cloud_weather_256.bin', import.meta.url);
 
@@ -62,22 +67,22 @@ export async function createClouds(renderer, scene, settings = {}) {
   };
 
   const u = {
-    coverage: uniform(state.coverage),
-    density: uniform(state.density),
-    base: uniform(state.base),
-    top: uniform(state.base + state.thickness),
-    type: uniform(state.type),
-    wind: uniform(new THREE.Vector3()),
-    shapeFreq: uniform(1 / 9000),
-    weatherFreq: uniform(1 / 60000),
-    steps: uniform(state.steps),
-    lightSteps: uniform(state.lightSteps),
-    maxDistance: uniform(state.maxDistance),
-    sunDir: uniform(new THREE.Vector3(0, 1, 0)),
-    sunColor: uniform(new THREE.Color(1, 1, 1)),
-    ambient: uniform(new THREE.Color(0.5, 0.6, 0.75)),
-    shadows: uniform(state.shadows),
-    frame: uniform(0),
+    coverage: U(state.coverage),
+    density: U(state.density),
+    base: U(state.base),
+    top: U(state.base + state.thickness),
+    type: U(state.type),
+    wind: U(new THREE.Vector3()),
+    shapeFreq: U(1 / 9000),
+    weatherFreq: U(1 / 60000),
+    steps: U(state.steps),
+    lightSteps: U(state.lightSteps),
+    maxDistance: U(state.maxDistance),
+    sunDir: U(new THREE.Vector3(0, 1, 0)),
+    sunColor: U(new THREE.Color(1, 1, 1)),
+    ambient: U(new THREE.Color(0.5, 0.6, 0.75)),
+    shadows: U(state.shadows),
+    frame: U(0),
   };
   const windOffset = new THREE.Vector3();
 

@@ -32,10 +32,11 @@ Necesita un navegador con WebGPU (Chrome o Edge 113+); sin él, Three.js cae a W
   acimut ~307°); en el panel se puede pasar a fecha, hora y lugar. El cielo mueve el sol (color, fuerza y dirección,
   manteniendo la caja de sombras sobre el terreno), la luz hemisférica y el mapa de entorno.
 - **Atmósfera sobre la escena**: la perspectiva aérea de VolumetricSky1, con la misma atmósfera que pinta el cielo,
-  y su bruma baja sobre el río (densidad 0,00175 en la cota del agua, caída de 11 m, los valores del visor de la v10).
-  Se ajusta en Cielo › "Perspectiva aérea y bruma". La niebla propia del visor de la v10 se ha quitado.
-- **Panel** lil-gui replegado por defecto, con la paleta verde: rendimiento, cámara, cielo (sol, atmósfera, perspectiva aérea y nubes),
-  luz, agua, vegetación y visibilidad.
+  y su niebla en capa sobre el río (densidad 0,00175 hasta la cota del agua y transición de 11 m, los valores del
+  visor de la v10). La niebla propia del visor de la v10 se ha quitado.
+- **Panel** lil-gui replegado por defecto, con la paleta verde y 368 px de ancho: ↻ Actualizar, rendimiento, cámara,
+  cielo e iluminación, atmósfera y nubes, niebla en capa, agua, vegetación y visibilidad. Qué hace cada control:
+  [GUIA_PANEL.md](GUIA_PANEL.md).
 
 ## Rendimiento
 

@@ -149,6 +149,12 @@ canvas {
   --string-color: var(--app-accent);
 }
 
+/* el contenido de cada carpeta, sangrado a la derecha con una línea guía: cuanto más dentro, más sangría */
+.lil-gui .lil-gui > .lil-children {
+  margin-left: 12px !important;
+  border-left: 1px solid var(--app-border) !important;
+}
+
 @media (max-width: 700px) {
   .app-ui header {
     padding: 12px;

@@ -1,5 +1,8 @@
 import * as THREE from 'three/webgpu';
-import { attribute, positionLocal, uniform, time, sin, vec3, float } from 'three/tsl';
+import { attribute, positionLocal, uniform, renderGroup, time, sin, vec3, float } from 'three/tsl';
+
+// Uniformes del viento compartidos por todas las especies y la hiedra: una vez por render (ver VolumetricSky1).
+const U = ( v ) => uniform( v ).setGroup( renderGroup );
 
 // Vegetación instanciada (desde la escena v7): siete especies, 2-3 variantes cada una y dos niveles de detalle.
 //
@@ -32,10 +35,10 @@ export async function crearVegetacion( { gltfLoader, rutas } ) {
 	const todo = new Float32Array( bin );
 
 	const u = {
-		direccion: uniform( new THREE.Vector3( 1, 0, 0.35 ).normalize() ),
-		fuerza: uniform( 1 ),
-		velocidad: uniform( 1 ),
-		hojas: uniform( 1 ),
+		direccion: U( new THREE.Vector3( 1, 0, 0.35 ).normalize() ),
+		fuerza: U( 1 ),
+		velocidad: U( 1 ),
+		hojas: U( 1 ),
 	};
 
 	const grupo = new THREE.Group();
@@ -174,7 +177,6 @@ export async function crearVegetacion( { gltfLoader, rutas } ) {
 		carpeta.add( grupo, 'visible' ).name( 'visible' );
 		carpeta.add( opciones, 'distanciaLod', 0, 1500, 10 ).name( 'LOD0 hasta (m)' ).onChange( rehacer );
 		carpeta.add( opciones, 'distanciaMax', 200, 3000, 50 ).name( 'distancia máx. (m)' ).onChange( rehacer );
-		carpeta.add( opciones, 'cullingFrustum' ).name( 'culling por instancia' ).onChange( rehacer );
 		carpeta.add( recuento, 'lod0' ).name( 'instancias LOD0' ).disable().listen();
 		carpeta.add( recuento, 'lod1' ).name( 'instancias LOD1' ).disable().listen();
 		const sombras = { v: true };
@@ -184,10 +186,12 @@ export async function crearVegetacion( { gltfLoader, rutas } ) {
 		fv.add( u.fuerza, 'value', 0, 4, 0.05 ).name( 'fuerza' );
 		fv.add( u.velocidad, 'value', 0, 4, 0.05 ).name( 'velocidad' );
 		fv.add( u.hojas, 'value', 0, 4, 0.05 ).name( 'temblor hojas' );
-		const ang = { grados: THREE.MathUtils.radToDeg( Math.atan2( u.direccion.value.z, u.direccion.value.x ) ) };
-		fv.add( ang, 'grados', -180, 180, 1 ).name( 'dirección (°)' ).onChange( ( g ) => {
+		// Misma convención que el viento de las nubes: hacia dónde sopla, en grados desde el norte (−Z) hacia el este (+X).
+		const d = u.direccion.value;
+		const ang = { grados: Math.round( ( THREE.MathUtils.radToDeg( Math.atan2( d.x, - d.z ) ) + 360 ) % 360 ) };
+		fv.add( ang, 'grados', 0, 360, 1 ).name( 'hacia (° desde el norte)' ).onChange( ( g ) => {
 			const r = THREE.MathUtils.degToRad( g );
-			u.direccion.value.set( Math.cos( r ), 0, Math.sin( r ) );
+			u.direccion.value.set( Math.sin( r ), 0, - Math.cos( r ) );
 		} );
 	}
 

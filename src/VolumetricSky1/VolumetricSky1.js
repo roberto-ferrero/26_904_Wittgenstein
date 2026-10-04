@@ -67,9 +67,12 @@ export const SKY_DEFAULTS = {
   // perspectiva aérea (fogNode de la escena)
   aerial: true,
   aerialStrength: 5, // multiplica la atmósfera real (a escala de un valle apenas se notaría)
-  hazeDensity: 0, // bruma baja: densidad (1/m) en hazeBase; 0 = sin bruma
-  hazeBase: 0, // altura (y) de referencia de la bruma, p. ej. la cota del agua
-  hazeFalloff: 50, // m: la bruma se divide por e cada hazeFalloff metros de subida
+  // niebla en capa (también en el fogNode, iluminada por el cielo)
+  fogDensity: 0, // 1/m dentro de la capa; 0 = sin niebla
+  fogBottom: 0, // cota baja (y, m)
+  fogTop: 10, // cota alta (y, m)
+  fogFade: 10, // m de transición por encima de la cota alta y por debajo de la baja
+  exposure: 1, // exposición del render (renderer.toneMappingExposure)
   // lecturas (las rellena update)
   sunAltAz: '',
   moonInfo: '',
@@ -99,7 +102,7 @@ export async function createVolumetricSky1({
   renderer, scene, camera, sun = null, hemi = null, environment = true, fog = true,
   settings = {}, cloudSettings = {}, places = PLACES,
 }) {
-  const state = { ...SKY_DEFAULTS, ...settings };
+  const state = { ...SKY_DEFAULTS, exposure: renderer.toneMappingExposure, ...settings };
   const clouds = await createClouds(renderer, scene, cloudSettings);
   const group = new THREE.Group(); // todo lo que el cielo añade a la escena (menos la cúpula de las nubes)
   group.name = 'VolumetricSky1';
@@ -265,11 +268,13 @@ export async function createVolumetricSky1({
 
     // perspectiva aérea
     const ap = atm.aerial;
-    ap.enabled.value = state.enabled && state.aerial ? 1 : 0;
+    ap.aerial.value = state.enabled && state.aerial ? 1 : 0;
     ap.strength.value = state.aerialStrength;
-    ap.hazeDensity.value = state.hazeDensity;
-    ap.hazeBase.value = state.hazeBase;
-    ap.hazeFalloff.value = Math.max(state.hazeFalloff, 0.1);
+    ap.fogDensity.value = state.enabled ? state.fogDensity : 0;
+    ap.fogBottom.value = state.fogBottom;
+    ap.fogTop.value = Math.max(state.fogTop, state.fogBottom);
+    ap.fogFade.value = Math.max(state.fogFade, 0.1);
+    renderer.toneMappingExposure = state.exposure;
 
     if (state.enabled) {
       if (sun) {
@@ -334,7 +339,8 @@ export async function createVolumetricSky1({
       scene.environment = fallbackEnv;
       scene.environmentIntensity = fallbackEnvIntensity;
       scene.background = fallbackBackground;
-      atm.aerial.enabled.value = 0;
+      atm.aerial.aerial.value = 0;
+      atm.aerial.fogDensity.value = 0;
       moonLight.intensity = 0;
     } else {
       lastEnvSun.set(0, -2, 0); // fuerza regenerar el entorno
@@ -365,6 +371,13 @@ export async function createVolumetricSky1({
     apply,
     /** Aplica los cambios de las nubes (`sky.clouds.state`) y rehace el entorno. */
     applyClouds,
+    renderer,
+    /** Vuelve a aplicar todo (cielo, nubes, LUT de la atmósfera y entorno) y empieza las nubes sin historial. */
+    refresh() {
+      atmKey = '';
+      apply();
+      applyClouds();
+    },
     /** Fuerza regenerar el mapa de entorno. */
     invalidateEnv() { lastEnvSun.set(0, -2, 0); },
     /**

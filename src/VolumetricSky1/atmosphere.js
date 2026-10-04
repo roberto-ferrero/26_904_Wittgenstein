@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import {
   Fn, If, Loop, abs, acos, atan, cameraPosition, cameraWorldMatrix, clamp, cos, dot, exp, float, int, max, min, mix, normalize, output, positionView, positionWorld,
-  pow, select, sign, sin, smoothstep, sqrt, texture, uniform, uv, vec2, vec3, vec4,
+  pow, renderGroup, select, sign, sin, smoothstep, sqrt, texture, uniform, uv, vec2, vec3, vec4,
 } from 'three/tsl';
 
 /**
@@ -15,6 +15,11 @@ import {
  * - `transmittance(altitudDeg)` en CPU con el mismo modelo, para el color de la luz del sol.
  * - `fogNode`: perspectiva aérea de la escena con la misma atmósfera y la LUT (ver más abajo).
  */
+// Uniformes compartidos por varios materiales (la perspectiva aérea está en todos los de la escena): en el grupo
+// `renderGroup` se suben una vez por render. En el grupo por defecto (por objeto) un cambio no llegaba a todos los
+// materiales y la escena se veía con valores mezclados hasta que otra cosa forzaba la actualización.
+const U = (v) => uniform(v).setGroup(renderGroup);
+
 const RG = 6360; // km
 const RT = 6460; // km
 const H0 = 0.05; // altura del observador (km): 50 m sobre el mar
@@ -60,20 +65,20 @@ export function transmittance(altDeg, p = ATMOSPHERE_DEFAULTS, out = new THREE.C
 export function createAtmosphere(renderer) {
   const params = { ...ATMOSPHERE_DEFAULTS };
   const u = {
-    sunDir: uniform(new THREE.Vector3(0, 1, 0)),
-    betaR: uniform(new THREE.Vector3(...BETA_R)),
-    mieSca: uniform(BETA_M_SCA),
-    mieExt: uniform(BETA_M_EXT),
-    betaO: uniform(new THREE.Vector3(...BETA_O)),
-    g: uniform(0.8),
-    ms: uniform(1),
-    sunE: uniform(22),
-    brightness: uniform(1),
-    sunDiscColor: uniform(new THREE.Color(1, 1, 1)),
-    showSun: uniform(1),
+    sunDir: U(new THREE.Vector3(0, 1, 0)),
+    betaR: U(new THREE.Vector3(...BETA_R)),
+    mieSca: U(BETA_M_SCA),
+    mieExt: U(BETA_M_EXT),
+    betaO: U(new THREE.Vector3(...BETA_O)),
+    g: U(0.8),
+    ms: U(1),
+    sunE: U(22),
+    brightness: U(1),
+    sunDiscColor: U(new THREE.Color(1, 1, 1)),
+    showSun: U(1),
     // 1 = bajo el horizonte se repite el color del horizonte (escenas con suelo finito, sin mar hasta el
     // horizonte); 0 = físico (el suelo del planeta, casi negro)
-    horizonFill: uniform(1),
+    horizonFill: U(1),
   };
 
   // ------------------------------------------------------------------ utilidades TSL
@@ -197,43 +202,60 @@ export function createAtmosphere(renderer) {
   let dirty = true;
   const lastSun = new THREE.Vector3(0, -2, 0);
 
-  // ------------------------------------------------------------------ perspectiva aérea (fogNode de la escena)
+  // ------------------------------------------------------------------ perspectiva aérea y niebla en capa (fogNode)
   // Para cada píxel, la atmósfera entre la cámara y la superficie:
-  // - transmitancia por canal T = exp(−τ), con τ = (β_R·ρ_R + β_M·ρ_M) · d · fuerza + bruma baja, donde ρ es la
-  //   densidad media a lo largo del rayo de cada capa exponencial (Rayleigh 8 km, Mie 1,2 km y la bruma, con su
-  //   cota y su caída), integrada de forma analítica;
+  // - transmitancia por canal T = exp(−τ), con
+  //     τ = (β_R·ρ_R + β_M·ρ_M) · d · fuerza   (perspectiva aérea: Rayleigh 8 km y Mie 1,2 km de escala de altura)
+  //       + densidad · d · ρ_capa                (niebla en capa, gris)
+  //   donde cada ρ es la densidad media a lo largo del rayo, integrada de forma analítica;
   // - luz dispersada hacia la cámara = radiancia del cielo en esa misma dirección (la LUT) · (1 − T): es la luz
   //   que trae el resto del rayo hasta el horizonte, así que lo lejano se funde con el cielo que tiene detrás,
   //   con el brillo hacia el sol y los colores del atardecer que ya calcula el cielo.
   // `fuerza` exagera la atmósfera real (a escala de unos km apenas se nota) para dar la bruma de un valle.
+  // La capa de niebla tiene densidad constante entre la cota baja y la cota alta y se desvanece por encima y por
+  // debajo con una exponencial de `fade` metros.
   const ap = {
-    enabled: uniform(1),
-    strength: uniform(5),
-    hazeDensity: uniform(0), // 1/m en la cota de la bruma
-    hazeBase: uniform(0), // altura (y) de referencia de la bruma
-    hazeFalloff: uniform(50), // m: la densidad se divide por e cada `hazeFalloff` metros de subida
+    aerial: U(1), // 1 = perspectiva aérea activa
+    strength: U(5),
+    fogDensity: U(0), // 1/m dentro de la capa (0 = sin niebla)
+    fogBottom: U(0), // cota baja (y)
+    fogTop: U(10), // cota alta (y)
+    fogFade: U(10), // m de transición por encima y por debajo
   };
-  // media de exp(−(y − base)/H) a lo largo de un tramo de altura yc → yp
-  const avgExp = (yc, yp, base, H) => {
-    const ec = exp(clamp(yc.sub(base).div(H).negate(), -60.0, 60.0));
-    const ep = exp(clamp(yp.sub(base).div(H).negate(), -60.0, 60.0));
+  // media de exp(−y/H) a lo largo de un tramo de altura yc → yp
+  const avgExp = (yc, yp, H) => {
+    const ec = exp(clamp(yc.div(H).negate(), -60.0, 60.0));
+    const ep = exp(clamp(yp.div(H).negate(), -60.0, 60.0));
     const dy = yp.sub(yc);
     return select(abs(dy).lessThan(0.01), ec, ec.sub(ep).mul(H).div(dy));
   };
+  // densidad relativa de la capa y su integral desde la cota baja
+  const layerRho = (y) => {
+    const b = ap.fogBottom, t = ap.fogTop, f = ap.fogFade;
+    return select(y.lessThan(b), exp(clamp(y.sub(b).div(f), -60.0, 0.0)),
+      select(y.greaterThan(t), exp(clamp(y.sub(t).div(f).negate(), -60.0, 0.0)), float(1.0)));
+  };
+  const layerF = (y) => {
+    const b = ap.fogBottom, t = ap.fogTop, f = ap.fogFade;
+    const below = f.mul(exp(clamp(y.sub(b).div(f), -60.0, 0.0)).sub(1.0));
+    const above = t.sub(b).add(f.mul(float(1.0).sub(exp(clamp(y.sub(t).div(f).negate(), -60.0, 0.0)))));
+    return select(y.lessThan(b), below, select(y.greaterThan(t), above, y.sub(b)));
+  };
   const aerialFog = Fn(() => {
     // desde la posición en espacio de vista (la misma que se proyecta): incluye instancias y desplazamientos
-    // de vértices (viento), que positionWorld no siempre recoge
+    // de vértices (viento)
     const toFrag = cameraWorldMatrix.mul(vec4(positionView, 0.0)).xyz.toVar();
     const d = toFrag.length().toVar();
     const dir = toFrag.div(max(d, 1e-4));
     const yc = cameraPosition.y;
     const yp = yc.add(toFrag.y);
-    const zero = float(0.0);
-    const rhoR = avgExp(yc, yp, zero, float(8000.0));
-    const rhoM = avgExp(yc, yp, zero, float(1200.0));
-    const tauAtm = u.betaR.mul(rhoR).add(vec3(u.mieExt).mul(rhoM)).mul(d.mul(0.001)).mul(ap.strength);
-    const tauHaze = ap.hazeDensity.mul(d).mul(avgExp(yc, yp, ap.hazeBase, ap.hazeFalloff));
-    const T = exp(tauAtm.add(tauHaze).mul(ap.enabled).negate());
+    const rhoR = avgExp(yc, yp, float(8000.0));
+    const rhoM = avgExp(yc, yp, float(1200.0));
+    const tauAtm = u.betaR.mul(rhoR).add(vec3(u.mieExt).mul(rhoM)).mul(d.mul(0.001)).mul(ap.strength).mul(ap.aerial);
+    const dy = yp.sub(yc);
+    const rhoLayer = select(abs(dy).lessThan(0.01), layerRho(yc), layerF(yp).sub(layerF(yc)).div(dy));
+    const tauFog = ap.fogDensity.mul(d).mul(rhoLayer);
+    const T = exp(tauAtm.add(tauFog).negate());
     return vec4(output.rgb.mul(T).add(skyRadiance(dir).mul(vec3(1.0).sub(T))), output.a);
   });
   const fogNode = aerialFog();
@@ -255,7 +277,7 @@ export function createAtmosphere(renderer) {
     dome,
     envDome,
     uniforms: u,
-    /** Uniformes de la perspectiva aérea: enabled, strength, hazeDensity, hazeBase, hazeFalloff. */
+    /** Uniformes de la perspectiva aérea y la niebla en capa: aerial, strength, fogDensity, fogBottom, fogTop, fogFade. */
     aerial: ap,
     /** Nodo para `scene.fogNode`: perspectiva aérea con la atmósfera del cielo. */
     fogNode,
