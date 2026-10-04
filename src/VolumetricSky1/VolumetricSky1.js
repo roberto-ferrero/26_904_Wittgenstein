@@ -36,10 +36,14 @@ export const SUN_MODES = ['Manual', 'Fecha, hora y lugar'];
 /** Valores por defecto de `state`; cualquiera se puede cambiar con `settings` al crear el cielo. */
 export const SKY_DEFAULTS = {
   enabled: true,
+  // orientación del escenario: rumbo geográfico (° desde el norte, hacia el este) al que apunta el eje −Z de la
+  // escena. 0 = −Z al norte y +X al este; 180 = −Z al sur. No mueve nada de la escena: gira el sol, la luna, las
+  // estrellas y el viento de las nubes alrededor de ella.
+  orientation: 0,
   sunMode: 'Fecha, hora y lugar',
-  // sol manual
+  // sol manual (acimut geográfico, como el del sol real)
   sunElevation: 35, // grados sobre el horizonte
-  sunAzimuth: 300, // grados desde el norte (−Z) hacia el este (+X)
+  sunAzimuth: 300, // grados desde el norte hacia el este
   // sol astronómico
   place: 'Austria (Viena)',
   lat: 48.21,
@@ -192,6 +196,7 @@ export async function createVolumetricSky1({
   const ambientDay = new THREE.Color(0.42, 0.55, 0.75);
   const ambientNight = new THREE.Color(0.012, 0.016, 0.03);
   const rot = new THREE.Matrix4();
+  const rotY = new THREE.Matrix4();
   const tmpV = new THREE.Vector3();
 
   /** Radio de las cúpulas: detrás de todo lo opaco y dentro del far de la cámara. */
@@ -214,8 +219,9 @@ export async function createVolumetricSky1({
     const m = moonPosition(date, state.lat, state.lon);
     const ill = moonIllumination(date);
     info.sunAlt = s.altitude; info.sunAz = s.azimuth; info.moonAlt = m.altitude; info.moonFraction = ill.fraction;
-    directionFromAltAz(s.altitude, s.azimuth, sunDir);
-    directionFromAltAz(m.altitude, m.azimuth, moonDir);
+    // acimut geográfico → acimut en la escena, según la orientación del escenario
+    directionFromAltAz(s.altitude, s.azimuth - state.orientation, sunDir);
+    directionFromAltAz(m.altitude, m.azimuth - state.orientation, moonDir);
     const R = domeRadius();
 
     // atmósfera: rayleigh → β_R, turbidez → β_M, direccionalidad Mie → g
@@ -238,7 +244,8 @@ export async function createVolumetricSky1({
     starUniform.value = state.stars * night;
     const m3 = equatorialToWorld(date, state.lat, state.lon);
     rot.set(m3[0], m3[1], m3[2], 0, m3[3], m3[4], m3[5], 0, m3[6], m3[7], m3[8], 0, 0, 0, 0, 1);
-    stars.matrix.makeTranslation(camera.position.x, camera.position.y, camera.position.z).multiply(rot).scale(tmpV.setScalar(R));
+    stars.matrix.makeTranslation(camera.position.x, camera.position.y, camera.position.z)
+      .multiply(rotY.makeRotationY(state.orientation * DEG)).multiply(rot).scale(tmpV.setScalar(R));
     stars.matrixWorldNeedsUpdate = true;
     stars.visible = state.enabled && starUniform.value > 0.01;
     moon.position.copy(camera.position).addScaledVector(moonDir, R);
@@ -390,6 +397,7 @@ export async function createVolumetricSky1({
       updateSunTimes();
       update(dt);
       clouds.setRadius(domeRadius());
+      clouds.orientation = state.orientation;
       clouds.update(dt, camera, light.dir, light.sunColor, light.sunIntensity, light.ambient);
       clouds.changing = state.animate && state.sunMode !== 'Manual' && dt > 0; // con la hora avanzando, sin historial
       renderEnv();

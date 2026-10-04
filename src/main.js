@@ -224,7 +224,12 @@ const sky = await createVolumetricSky1( {
 	renderer, scene, camera, sun: sol, hemi,
 	fog: true, // la única niebla de la escena: la perspectiva aérea del cielo (scene.fogNode)
 	settings: {
-		sunMode: 'Manual',
+		// sol por fecha, hora y lugar: 21 de junio a las 17:30 en Viena (31° de altura, hacia el oeste), parecido al
+		// sol de la escena de Blender; el modo Manual arranca con el de Blender (34°, acimut ~307°)
+		sunMode: 'Fecha, hora y lugar',
+		place: 'Austria (Viena)',
+		date: '2026-06-21',
+		hour: 17.5,
 		sunElevation: THREE.MathUtils.radToDeg( Math.asin( aSol.y ) ),
 		sunAzimuth: ( THREE.MathUtils.radToDeg( Math.atan2( aSol.x, - aSol.z ) ) + 360 ) % 360,
 		sunStrength: il.sol.intensidad_threejs_sugerida,
@@ -280,6 +285,7 @@ window.addEventListener( 'resize', () => {
 function frame( dt ) {
 	controls.update();
 	camera.updateMatrixWorld();
+	vegetacion.opciones.orientacion = sky.state.orientation;
 	vegetacion.actualizar( camera );
 	agua?.actualizar( dt );
 	sky.update( dt );

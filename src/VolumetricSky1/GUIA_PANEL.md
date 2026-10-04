@@ -20,15 +20,18 @@ recalcula el cielo, rehace los reflejos y vuelve a empezar las nubes desde cero.
 | Control | Qué hace |
 |---|---|
 | Cielo activo | Enciende o apaga el cielo entero (cielo, nubes, perspectiva aérea, niebla y control de las luces). Apagado, la escena vuelve a su fondo, entorno y niebla originales. |
+| Orientación del escenario (°) | Hacia qué rumbo geográfico apunta el eje −Z de la escena (en 26_904, más o menos hacia donde mira la cámara "Camera", que está 13° a la izquierda de −Z). 0 = norte, 90 = este, 180 = sur, 135 = sureste. No mueve nada de la escena: gira a su alrededor el sol, la luna, las estrellas y el viento, que siguen dados en rumbos geográficos. Con 180 y la misma hora, el sol que entraba por la izquierda de la cámara entra por la derecha. |
 | Posición del sol | **Manual**: tú fijas elevación y acimut. **Fecha, hora y lugar**: el sol (y la luna) están donde estarían de verdad. |
 | Elevación (°) | *(Manual)* Altura del sol sobre el horizonte: 90 = cenit, 0 = horizonte, negativo = ya se ha puesto. Cambia el color del sol y del cielo (anaranjado cerca del horizonte), la dirección de las sombras y la fuerza de la luz. |
-| Acimut (° desde el norte) | *(Manual)* Dirección del sol en planta: 0 = norte (−Z), 90 = este (+X), 180 = sur, 270 = oeste. |
+| Acimut (° desde el norte) | *(Manual)* Dirección geográfica del sol: 0 = norte, 90 = este, 180 = sur, 270 = oeste. Con orientación 0, el norte es −Z de la escena. |
 | Lugar | *(Fecha, hora y lugar)* Latitud, longitud y zona horaria. |
 | Fecha (AAAA-MM-DD) | *(Fecha, hora y lugar)* Día del año: cambia la altura del sol a mediodía, las horas de salida y puesta y la fase de la luna. |
 | Hora local | *(Fecha, hora y lugar)* Hora del día. |
+| Fecha y hora | *(Fecha, hora y lugar)* Lectura de la fecha y la hora con su zona horaria. |
+| Salida / puesta | *(Fecha, hora y lugar)* Lectura: horas de salida y puesta del sol ese día en ese lugar. |
 | Avanzar la hora | *(Fecha, hora y lugar)* Hace correr el tiempo. |
 | Velocidad (× tiempo real) | *(Fecha, hora y lugar)* Rapidez del tiempo con "Avanzar la hora": 120 = dos minutos por segundo. |
-| Sol ahora | Lectura: altura y acimut actuales del sol. |
+| Sol ahora | Lectura: altura y acimut geográfico actuales del sol. |
 | Fuerza del sol | Intensidad de la luz directa del sol sobre la escena. El color lo pone la atmósfera. Se atenúa sola al acercarse al horizonte. |
 | Luz ambiente | Intensidad de la luz difusa del cielo (luz hemisférica): cuánto se ven las zonas en sombra. |
 | Reflejos del cielo | Intensidad del mapa de entorno: lo que reflejan el agua y las superficies y la luz indirecta que da el cielo con sus nubes. |

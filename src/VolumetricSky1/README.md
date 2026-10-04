@@ -87,7 +87,9 @@ const sky = await createVolumetricSky1({
 
 ## Convenciones y límites
 
-- Unidades en metros, Y arriba, **norte = −Z**, **este = +X**. Acimut en grados desde el norte, en sentido horario.
+- Unidades en metros, Y arriba. Por defecto **norte = −Z**, **este = +X**; `state.orientation` (°) dice a qué rumbo
+  apunta −Z (180 = −Z al sur) y gira sol, luna, estrellas y viento de las nubes sin tocar la escena. Acimuts en grados
+  desde el norte geográfico, en sentido horario.
 - Las cúpulas del cielo y las nubes se colocan al 90 % del `far` de la cámara (como mucho 50 km): todo lo
   opaco de la escena tiene que quedar más cerca. Las nubes solo se ven por encima del horizonte de la cámara.
 - `horizonFill` (activo por defecto) repite el color del horizonte por debajo de él, para escenas con suelo

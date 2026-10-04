@@ -28,8 +28,9 @@ Necesita un navegador con WebGPU (Chrome o Edge 113+); sin él, Three.js cae a W
   castillo v4 con roña, humedades e hiedra que se mece, torre y vegetación instanciada con dos LOD y viento.
   Arranca en la cámara "Camera" de Blender (OrbitControls; "Volver a Camera" en el panel).
 - **Cielo: [VolumetricSky1](src/VolumetricSky1/README.md)**, módulo reutilizable sacado del cielo de Whale. Sustituye
-  al cielo equirectangular. Aquí arranca con el sol manual en la dirección de la escena de Blender (34° de elevación,
-  acimut ~307°); en el panel se puede pasar a fecha, hora y lugar. El cielo mueve el sol (color, fuerza y dirección,
+  al cielo equirectangular. Aquí arranca con el sol por fecha, hora y lugar (Viena, 21 de junio a las 17:30: 31° de altura,
+  hacia el oeste, parecido al sol de la escena de Blender) y con la orientación del escenario a 0 (−Z al norte); con
+  la orientación se elige hacia dónde mira el escenario sin moverlo. El cielo mueve el sol (color, fuerza y dirección,
   manteniendo la caja de sombras sobre el terreno), la luz hemisférica y el mapa de entorno.
 - **Atmósfera sobre la escena**: la perspectiva aérea de VolumetricSky1, con la misma atmósfera que pinta el cielo,
   y su niebla en capa sobre el río (densidad 0,00175 hasta la cota del agua y transición de 11 m, los valores del

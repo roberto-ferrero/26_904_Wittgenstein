@@ -276,6 +276,8 @@ export async function createClouds(renderer, scene, settings = {}) {
   return {
     state,
     envMesh,
+    /** Orientación del escenario (° del norte al que apunta −Z): la pone VolumetricSky1. */
+    orientation: 0,
     composite,
     /** Radio de las cúpulas (m): tiene que quedar detrás de todo lo opaco y dentro del far de la cámara. */
     setRadius(r) {
@@ -294,7 +296,7 @@ export async function createClouds(renderer, scene, settings = {}) {
     cloudShadowNode,
     /** @param simDt tiempo simulado; dirección, color y fuerza de la luz principal y color ambiente */
     update(simDt, camera, lightDir, lightColor, lightIntensity, ambientColor) {
-      const a = THREE.MathUtils.degToRad(state.windDirection);
+      const a = THREE.MathUtils.degToRad(state.windDirection - this.orientation); // geográfico → escena
       windOffset.x -= Math.sin(a) * state.windSpeed * simDt;
       windOffset.z += Math.cos(a) * state.windSpeed * simDt;
       u.wind.value.copy(windOffset);

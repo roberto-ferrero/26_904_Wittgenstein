@@ -29,6 +29,7 @@ export function addVolumetricSky1Gui(sky, parent = null) {
     manual.forEach((ctl) => ctl.show(m));
     astro.forEach((ctl) => ctl.show(!m));
   };
+  fSky.add(s, 'orientation', 0, 360, 1).name('Orientación del escenario (°)');
   fSky.add(s, 'sunMode', sky.sunModes).name('Posición del sol').onChange(() => { showMode(); sky.apply(); });
   manual.push(
     fSky.add(s, 'sunElevation', -10, 90, 0.1).name('Elevación (°)'),
@@ -38,6 +39,8 @@ export function addVolumetricSky1Gui(sky, parent = null) {
     fSky.add(s, 'place', sky.places).name('Lugar').onChange(() => sky.apply()),
     fSky.add(s, 'date').name('Fecha (AAAA-MM-DD)').onFinishChange(() => sky.apply()),
     fSky.add(s, 'hour', 0, 23.99, 0.01).name('Hora local').listen(),
+    fSky.add(s, 'localTime').name('Fecha y hora').listen().disable(),
+    fSky.add(s, 'sunTimes').name('Salida / puesta').listen().disable(),
     fSky.add(s, 'animate').name('Avanzar la hora'),
     fSky.add(s, 'timeSpeed', 1, 3600, 1).name('Velocidad (× tiempo real)'),
   );

@@ -108,7 +108,14 @@ export async function crearVegetacion( { gltfLoader, rutas } ) {
 
 	// ------------------------------------------------------------ LOD y culling
 
-	const opciones = { distanciaLod: 250, distanciaMax: 3000, cullingFrustum: true };
+	// vientoHacia: rumbo geográfico (° desde el norte) hacia el que sopla; orientacion: rumbo al que apunta −Z de la
+	// escena (lo pone main.js con la orientación del cielo). La dirección en la escena es la diferencia.
+	const d0 = u.direccion.value;
+	const opciones = {
+		distanciaLod: 250, distanciaMax: 3000, cullingFrustum: true,
+		vientoHacia: Math.round( ( THREE.MathUtils.radToDeg( Math.atan2( d0.x, - d0.z ) ) + 360 ) % 360 ),
+		orientacion: 0,
+	};
 	const frustum = new THREE.Frustum();
 	const pv = new THREE.Matrix4();
 	const ultima = new THREE.Matrix4();
@@ -122,6 +129,9 @@ export async function crearVegetacion( { gltfLoader, rutas } ) {
 	}
 
 	function actualizar( camera ) {
+
+		const r = THREE.MathUtils.degToRad( opciones.vientoHacia - opciones.orientacion );
+		u.direccion.value.set( Math.sin( r ), 0, - Math.cos( r ) );
 
 		pv.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
 		if ( ! forzar && pv.equals( ultima ) ) return;
@@ -186,13 +196,8 @@ export async function crearVegetacion( { gltfLoader, rutas } ) {
 		fv.add( u.fuerza, 'value', 0, 4, 0.05 ).name( 'fuerza' );
 		fv.add( u.velocidad, 'value', 0, 4, 0.05 ).name( 'velocidad' );
 		fv.add( u.hojas, 'value', 0, 4, 0.05 ).name( 'temblor hojas' );
-		// Misma convención que el viento de las nubes: hacia dónde sopla, en grados desde el norte (−Z) hacia el este (+X).
-		const d = u.direccion.value;
-		const ang = { grados: Math.round( ( THREE.MathUtils.radToDeg( Math.atan2( d.x, - d.z ) ) + 360 ) % 360 ) };
-		fv.add( ang, 'grados', 0, 360, 1 ).name( 'hacia (° desde el norte)' ).onChange( ( g ) => {
-			const r = THREE.MathUtils.degToRad( g );
-			u.direccion.value.set( Math.sin( r ), 0, - Math.cos( r ) );
-		} );
+		// Misma convención que el viento de las nubes: hacia dónde sopla, en grados desde el norte geográfico.
+		fv.add( opciones, 'vientoHacia', 0, 360, 1 ).name( 'hacia (° desde el norte)' );
 	}
 
 	return { objeto: grupo, actualizar, gui, totalInstancias, uniforms: u, opciones };
