@@ -14,7 +14,7 @@ y reutilizable, como [VolumetricSky1](../VolumetricSky1/README.md). Plan complet
 | F2. Corriente base | Función de corriente con profundidad e islas; normales con flow map | **Hecha** |
 | F3. Superficie | Color por profundidad, orilla transparente, reflejos del cielo regulables, ondas de viento | **Hecha** |
 | F4. Simulación viva | Remolinos (Stable Fluids 2D en compute); las ondas siguen su velocidad | **Hecha** |
-| F5. Espuma | Espuma advectada con fuentes físicas | Pendiente |
+| F5. Espuma | Espuma advectada con fuentes físicas, burbujas que siguen la corriente, control de carácter | **Hecha** |
 | F6. Obstáculos en caliente | `addObstacle` / `removeObstacle` | Pendiente |
 | F7. Reflejo de la escena | Reflejo plano opcional | Pendiente |
 | F8. Cierre | Presets, WebGL 2, `sampleVelocity` | Pendiente |
@@ -98,6 +98,13 @@ renderer.setAnimationLoop(() => {
 | `rippleSize` | `90` | Metros por repetición de la capa grande de ondas (la fina es 0,37 veces). |
 | `rippleStrength` | `0.3` | Fuerza del mapa de normales; sube hasta ×1,35 donde el agua corre más. |
 | `flowCycle` | `4` | Segundos por ciclo del flow map: más largo, más recorrido de cada fase y más estiramiento. |
+| `character` | `0.35` | Carácter, de espejo calmo (0) a río hidráulico (1): escala la cantidad y la visibilidad de la espuma. |
+| `foamAmount` | `1` | Cantidad general de espuma (se multiplica por el carácter). |
+| `foamLife` | `15` | Segundos de vida de la espuma. |
+| `foamShear`, `foamConvergence`, `foamImpact`, `foamBank`, `foamShallow` | `1.5`, `1.5`, `1`, `0.5`, `0.3` | Peso de cada fuente: remolinos y cizalla, convergencia, choque con orillas y piedras, orillas, bajíos. |
+| `foamColor` | `0xeeeef4` | Color de la espuma (sRGB). |
+| `foamSize` | `5` | Metros por repetición de las burbujas (la capa fina es 0,4 veces). |
+| `foamSharpness` | `3` | Contraste del umbral: más alto, vetas más definidas. |
 | `simulation` | `true` | Simulación viva activa. Sin ella las ondas siguen la corriente base (calidad baja, sin coste de compute). |
 | `simRate` | `30` | Pasos de simulación por segundo (a paso fijo; como mucho 2 por fotograma). |
 | `vorticity` | `0.4` | Confinamiento de vorticidad. |
@@ -109,7 +116,7 @@ renderer.setAnimationLoop(() => {
 | `pressureIterations` | `20` | Iteraciones de Jacobi de la proyección. |
 | `windRipples` | `0.25` | Fuerza de las ondas de viento a 10 m/s (crece con el viento hasta ×1,5). |
 | `windSize` | `7` | Metros por repetición de las ondas de viento. |
-| `debugView` | `'Ninguna'` | Vista de depuración: `'Orilla (distancia con signo)'`, `'Profundidad'`, `'Obstáculos'`, `'Lecho (altura)'`, `'Corriente base (velocidad)'` (con la simulación activa muestra su velocidad), `'Corriente base frente a _flujo'` o `'Simulación (vorticidad)'`. Pinta el mapa sobre la lámina sin luz. |
+| `debugView` | `'Ninguna'` | Vista de depuración: `'Orilla (distancia con signo)'`, `'Profundidad'`, `'Obstáculos'`, `'Lecho (altura)'`, `'Corriente base (velocidad)'` (con la simulación activa muestra su velocidad), `'Corriente base frente a _flujo'` o `'Simulación (vorticidad)'` o `'Espuma (densidad)'`. Pinta el mapa sobre la lámina sin luz. |
 
 ## Dominio (F1)
 
@@ -186,6 +193,34 @@ Desde "Camera" apenas se ven en las ondas: la espuma de la F5 es la que los har�
 Pendiente respecto al plan: no hay interpolación entre pasos (con campos tan lentos no se nota) ni corrección
 BFECC/MacCormack; la turbulencia sembrada y la viscosidad bastan para remolinos coherentes.
 
+## Espuma (F5)
+
+La espuma es un escalar de densidad en la rejilla de la simulación (`sim.js`): se advecta con la velocidad, decae
+con `foamLife` y nace donde el agua la produce. Cada fuente se satura (`1 − e^(−x)`) para que una zona muy activa no
+llene de blanco todo lo que tiene aguas abajo:
+
+- **Remolinos y cizalla**: vorticidad marcada (por encima de la que da la propia corriente).
+- **Convergencia**: `∇·u < 0`, donde el agua se junta y deja líneas de espuma.
+- **Choque**: la corriente va hacia una orilla o una piedra (estancamiento aguas arriba).
+- **Orillas**: encaje fino en las 1-2 celdas pegadas a tierra, más donde el agua corre.
+- **Bajíos**: menos de ~2 m de agua con corriente.
+
+La capa de cizalla pegada a tierra es permanente, así que no cuenta para remolinos ni convergencia (si no, toda la
+orilla sería una banda blanca de 40 m; fue lo que salió en la primera prueba).
+
+En el material (`surface.js`), la densidad se multiplica por una textura de burbujas (`foamTexture.js`: red celular
+repetible generada al cargar) desplazada con el mismo flow map que las ondas, y se umbraliza para que salgan vetas y
+no manchas. La espuma sube el albedo y la rugosidad, aplana las ondas y es opaca también en la orilla transparente.
+De lejos, el mipmap de las burbujas deja la densidad media, así que las líneas se siguen viendo.
+
+**Carácter**: un solo control de espejo (0) a hidráulico (1) que escala la cantidad de espuma y su visibilidad.
+Conjuntos del visor: "Río de la ilustración" (carácter 0,15) y "Río hidráulico" (0,85, con más turbulencia y menos
+reflejo para que la espuma contraste).
+
+Desde "Camera" la espuma se lee como encaje blanco en las orillas y la punta del castillo; con la niebla y el reflejo
+del cielo tan claros el contraste es suave. En vista aérea se ven las manchas en los remolinos y los rizos detrás del
+promontorio.
+
 ## Superficie (F3)
 
 - **Color por profundidad**: `mix(colorShallow, colorDeep, 1 − e^(−profundidad / absorption))` con la profundidad
@@ -212,12 +247,12 @@ Medido en el visor de la escena v10 a 1920 × 1080 con la GPU sincronizada (`awa
 
 | Vista | Con el río | Sin el río |
 |---|---|---|
-| "Camera" | 11,1-11,4 ms (simulación activa) | 10,4 ms (sin simulación) |
+| "Camera" | 11,0-11,4 ms (simulación y espuma) | 10,4 ms (sin simulación) |
 | Aérea | 8,6 ms | 8,4 ms |
 
 Por fotograma el río es un solo dibujo de 44.322 triángulos. Con el flow map, las ondas de viento y el color por
 profundidad (cinco lecturas del mapa de normales, una de la corriente, una del dominio y un ruido) cuesta ~0,4-0,6 ms
-desde "Camera"; la variación entre medidas es de ±0,3 ms. La simulación cuesta ~0,8 ms por fotograma a 60 fps (unos 1,6 ms por paso, uno de cada dos fotogramas); se puede
+desde "Camera"; la variación entre medidas es de ±0,3 ms. La simulación con la espuma cuesta ~0,7-0,8 ms por fotograma a 60 fps (unos 1,6 ms por paso, uno de cada dos fotogramas); se puede
 bajar con menos iteraciones de presión o menos pasos por segundo. Al cargar
 se hace una vez el horneado del dominio (0,5-0,9 s) y la corriente base (~1,3 s), con el bucle del visor en marcha.
 
@@ -229,7 +264,8 @@ RealisticRiver1.js  creación, estado, update, dispose
 surface.js          material TSL de la lámina
 domain.js           horneado del dominio: vista cenital, profundidad, distancia a la orilla, obstáculos
 baseflow.js         corriente base: función de corriente con profundidad e islas
-sim.js              simulación viva en compute: remolinos, cizalla, proyección por profundidad
+sim.js              simulación viva en compute: remolinos, cizalla, proyección por profundidad, espuma
+foamTexture.js      textura repetible de burbujas, generada al cargar
 debug.js            vistas de depuración de los mapas, la corriente y la vorticidad
 gui.js              panel lil-gui (opcional)
 GUIA_PANEL.md       qué hace cada control

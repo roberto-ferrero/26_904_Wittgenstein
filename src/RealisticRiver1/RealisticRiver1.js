@@ -3,6 +3,7 @@ import { createSurface } from './surface.js';
 import { bakeDomain } from './domain.js';
 import { solveBaseFlow } from './baseflow.js';
 import { createSimulation } from './sim.js';
+import { createFoamTexture } from './foamTexture.js';
 import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
 
 /**
@@ -16,6 +17,8 @@ import { createDebugMaterial, DEBUG_VIEWS } from './debug.js';
  * - F2: corriente base (baseflow.js) y normales desplazadas con ella (flow map, surface.js).
  * - F3: color por profundidad real, orilla transparente, ondas de viento y reflejos del cielo regulables.
  * - F4: simulación viva en compute (sim.js): remolinos, separación y cizalla; las ondas siguen su velocidad.
+ * - F5: espuma advectada en la simulación con fuentes físicas y pintada con burbujas que siguen la corriente;
+ *   control de carácter, de espejo a hidráulico.
  * Simulación, espuma y obstáculos en caliente llegan en las fases siguientes sin cambiar esta API.
  *
  * Uso mínimo:
@@ -52,6 +55,19 @@ export const RIVER_DEFAULTS = {
   turbulence: 1, // siembra de perturbaciones junto a orillas y obstáculos (× velocidad media por s)
   turbScale: 30, // metros de las perturbaciones sembradas
   pressureIterations: 20,
+  // carácter: de espejo calmo (0) a río hidráulico (1); escala la espuma y la fuerza de las ondas
+  character: 0.35,
+  // espuma (F5, necesita la simulación): cantidad general, vida (s), peso de cada fuente, aspecto
+  foamAmount: 1,
+  foamLife: 15,
+  foamShear: 1.5,
+  foamConvergence: 1.5,
+  foamImpact: 1,
+  foamBank: 0.5,
+  foamShallow: 0.3,
+  foamColor: 0xeeeef4,
+  foamSize: 5, // metros por repetición de las burbujas (la capa fina es 0,4 veces)
+  foamSharpness: 3, // contraste del umbral: más alto, vetas más definidas
   // ondas de viento (con setWind): fuerza a 10 m/s de viento y metros por repetición
   windRipples: 0.25,
   windSize: 7,
@@ -93,7 +109,8 @@ export async function createRealisticRiver1({
   const flowOptions = { cellSize: flowCellSize, direction: [flowDirection[0], flowDirection[2]] };
   let flow = solveBaseFlow(domain, flowOptions);
 
-  const surface = createSurface(state, normalTexture ?? water.material?.normalMap ?? null, domain, flow);
+  const bubbles = createFoamTexture();
+  const surface = createSurface(state, normalTexture ?? water.material?.normalMap ?? null, domain, flow, bubbles);
   const object = new THREE.Mesh(geometry, surface.material);
   object.name = 'RealisticRiver1';
   water.matrixWorld.decompose(object.position, object.quaternion, object.scale);
@@ -104,7 +121,7 @@ export async function createRealisticRiver1({
 
   // ---------------------------------------------------------------- simulación viva (F4)
   let sim = createSimulation(renderer, flow, state);
-  debug.setSimTexture(sim.texture);
+  debug.setSimTexture(sim.texture, sim.foamTexture);
   scene.add(object);
 
   function apply() {
@@ -113,6 +130,7 @@ export async function createRealisticRiver1({
     sim.applyState();
     const vel = state.simulation ? sim.texture : flow.texture;
     surface.setVelocityTexture(vel);
+    surface.setFoamTexture(sim.foamTexture, state.simulation);
     debug.setVelocityTexture(vel);
     const view = DEBUG_VIEWS[state.debugView] ?? 0;
     debug.uniforms.view.value = view;
@@ -129,7 +147,7 @@ export async function createRealisticRiver1({
     debug.refresh();
     sim.dispose();
     sim = createSimulation(renderer, flow, state);
-    debug.setSimTexture(sim.texture);
+    debug.setSimTexture(sim.texture, sim.foamTexture);
     apply();
     scene.add(object);
     object.visible = visible;
@@ -173,6 +191,7 @@ export async function createRealisticRiver1({
       surface.dispose();
       debug.dispose();
       sim.dispose();
+      bubbles.dispose();
       domain.texture.dispose();
     },
     // referencias internas, para depurar

@@ -4,6 +4,7 @@ En el visor está en la carpeta **Agua**. Los controles irán creciendo con cada
 
 | Control | Rango | Qué hace |
 |---|---|---|
+| carácter (espejo → hidráulico) | 0-1 | 0 = espejo calmo, casi sin espuma (como la ilustración); 1 = río hidráulico, con espuma en remolinos, orillas y choques. |
 | color orilla | color | Color del agua donde hay poca profundidad. |
 | color fondo | color | Color del agua en lo hondo. Entre los dos se mezcla según la profundidad real. |
 | absorción (m) | 0,2-20 | Cuánta agua hace falta para llegar al color del fondo: más bajo, el color hondo aparece enseguida. |
@@ -25,6 +26,17 @@ En el visor está en la carpeta **Agua**. Los controles irán creciendo con cada
 | · iteraciones de presión | 2-80 | Precisión de la proyección (que el caudal se conserve). Menos, más barato. |
 | · pasos por segundo | 10-60 | Frecuencia de la simulación. Menos, más barato. |
 | · ⟲ Reiniciar los remolinos | | Vuelve a la corriente base. |
+| **Espuma** | | Carpeta (necesita la simulación activa): |
+| · cantidad | 0-4 | Cantidad general (se multiplica por el carácter). |
+| · vida (s) | 1-120 | Cuánto dura la espuma: más larga, vetas más largas río abajo. |
+| · en remolinos y cizalla | 0-5 | Espuma en los bordes de los remolinos. |
+| · donde converge el agua | 0-5 | Líneas de espuma donde el agua se junta. |
+| · choque con orillas y piedras | 0-5 | Espuma donde la corriente va contra tierra. |
+| · a lo largo de las orillas | 0-5 | Encaje fino pegado a la orilla. |
+| · en bajíos | 0-5 | Espuma donde hay poca agua y corriente. |
+| · color | color | Color de la espuma. |
+| · tamaño de las burbujas (m) | 0,5-30 | Tamaño del dibujo de burbujas. |
+| · definición de las vetas | 0,5-10 | Más alto, vetas de borde más nítido; más bajo, espuma más difusa. |
 | ondas de viento | 0-1,5 | Fuerza de las ondas pequeñas que empuja el viento (crece con la velocidad del viento de las nubes). |
 | tamaño ondas de viento (m) | 1-40 | Metros por repetición de las ondas de viento. |
 | ciclo del flow map (s) | 0,5-12 | Cada cuánto se reinicia cada fase del desplazamiento. Más largo, ondas más estiradas por la corriente; más corto, se nota más el fundido. |
@@ -35,7 +47,7 @@ No se guarda en la URL ni en los conjuntos de configuración.
 
 | Control | Qué hace |
 |---|---|
-| Vista | Pinta un mapa del dominio sobre el agua, sin luz. **Orilla**: azules en el agua (más oscuro hacia el centro), ocres en tierra, la orilla en blanco y curvas cada 5 m. **Profundidad**: amarillo en los bajíos, verde, azul y morado a 13 m, con curvas cada metro. **Obstáculos**: rojo donde una roca sobresale del agua, sobre la distancia a la orilla en grises. **Lecho**: altura del fondo con curvas cada 2 m. **Corriente base (velocidad)**: azul oscuro donde el agua va despacio, turquesa a la media, amarillo y blanco al doble o más; los puntos blancos viajan con la corriente. Con la simulación activa, la vista de velocidad muestra la de la simulación. **Simulación (vorticidad)**: rojo y azul según el sentido de giro, más intenso cuanto más gira; los puntos viajan con la corriente. **Corriente base frente a _flujo**: verde donde la dirección coincide con la que trae la lámina (`_flujo_x`, `_flujo_z`), amarillo y rojo donde difiere. |
+| Vista | Pinta un mapa del dominio sobre el agua, sin luz. **Orilla**: azules en el agua (más oscuro hacia el centro), ocres en tierra, la orilla en blanco y curvas cada 5 m. **Profundidad**: amarillo en los bajíos, verde, azul y morado a 13 m, con curvas cada metro. **Obstáculos**: rojo donde una roca sobresale del agua, sobre la distancia a la orilla en grises. **Lecho**: altura del fondo con curvas cada 2 m. **Corriente base (velocidad)**: azul oscuro donde el agua va despacio, turquesa a la media, amarillo y blanco al doble o más; los puntos blancos viajan con la corriente. Con la simulación activa, la vista de velocidad muestra la de la simulación. **Simulación (vorticidad)**: rojo y azul según el sentido de giro, más intenso cuanto más gira; los puntos viajan con la corriente. **Espuma (densidad)**: de azul oscuro (nada) a blanco. **Corriente base frente a _flujo**: verde donde la dirección coincide con la que trae la lámina (`_flujo_x`, `_flujo_z`), amarillo y rojo donde difiere. |
 | Dominio | Tamaño de la rejilla, celdas con agua, profundidad máxima y celdas de obstáculo. |
 | Horneado | Lo que tardó el último horneado. |
 | Corriente base | Tamaño de la rejilla, islas, iteraciones y tiempo del cálculo. |

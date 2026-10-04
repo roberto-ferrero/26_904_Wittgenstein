@@ -1,0 +1,11 @@
+{
+  "nombre": "Río hidráulico (espuma y remolinos visibles)",
+  "descripcion": "Prioriza la lectura del comportamiento del agua: carácter alto (más espuma en remolinos, orillas y choques), corriente más exagerada, más turbulencia junto a tierra y reflejos algo más bajos para que la espuma contraste. El resto, valores de arranque. RealisticRiver1 F5, 04/10/2026.",
+  "valores": {
+    "agua.caracter-espejo-hidraulico": 0.85,
+    "agua.reflejos-del-cielo": 0.7,
+    "agua.exageracion-de-la-velocidad": 3,
+    "agua.fuerza-ondas": 0.4,
+    "remolinos-simulacion.turbulencia-junto-a-tierra": 1.6
+  }
+}

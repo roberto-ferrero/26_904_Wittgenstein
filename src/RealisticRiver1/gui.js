@@ -14,6 +14,7 @@ export function addRealisticRiver1Gui(river, parent = null) {
   const s = river.state;
   const apply = () => river.apply();
 
+  gui.add(s, 'character', 0, 1, 0.01).name('carácter (espejo → hidráulico)').onChange(apply);
   gui.addColor(s, 'colorShallow').name('color orilla').onChange(apply);
   gui.addColor(s, 'colorDeep').name('color fondo').onChange(apply);
   gui.add(s, 'absorption', 0.2, 20, 0.1).name('absorción (m)').onChange(apply);
@@ -36,6 +37,17 @@ export function addRealisticRiver1Gui(river, parent = null) {
   fSim.add(s, 'pressureIterations', 2, 80, 2).name('iteraciones de presión').onChange(apply);
   fSim.add(s, 'simRate', 10, 60, 1).name('pasos por segundo').onChange(apply);
   fSim.add({ reset: () => river.resetSimulation() }, 'reset').name('⟲ Reiniciar los remolinos');
+  const fFoam = gui.addFolder('Espuma').close();
+  fFoam.add(s, 'foamAmount', 0, 4, 0.05).name('cantidad').onChange(apply);
+  fFoam.add(s, 'foamLife', 1, 120, 1).name('vida (s)').onChange(apply);
+  fFoam.add(s, 'foamShear', 0, 5, 0.05).name('en remolinos y cizalla').onChange(apply);
+  fFoam.add(s, 'foamConvergence', 0, 5, 0.05).name('donde converge el agua').onChange(apply);
+  fFoam.add(s, 'foamImpact', 0, 5, 0.05).name('choque con orillas y piedras').onChange(apply);
+  fFoam.add(s, 'foamBank', 0, 5, 0.05).name('a lo largo de las orillas').onChange(apply);
+  fFoam.add(s, 'foamShallow', 0, 5, 0.05).name('en bajíos').onChange(apply);
+  fFoam.addColor(s, 'foamColor').name('color').onChange(apply);
+  fFoam.add(s, 'foamSize', 0.5, 30, 0.1).name('tamaño de las burbujas (m)').onChange(apply);
+  fFoam.add(s, 'foamSharpness', 0.5, 10, 0.1).name('definición de las vetas').onChange(apply);
   gui.add(s, 'windRipples', 0, 1.5, 0.01).name('ondas de viento').onChange(apply);
   gui.add(s, 'windSize', 1, 40, 0.5).name('tamaño ondas de viento (m)').onChange(apply);
 

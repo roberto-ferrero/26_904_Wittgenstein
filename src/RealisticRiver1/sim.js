@@ -17,8 +17,11 @@ import { edt2d } from './domain.js';
  *    tiempo (el río no deriva y conserva su caudal medio).
  * 4. Proyección ponderada por la profundidad (tapa rígida): se resuelve ∇·(h ∇p) = ∇·(h u) con Jacobi y se resta ∇p,
  *    así el caudal h·u no tiene divergencia. Contorno cerrado en tierra y abierto (p = 0) donde el río entra y sale.
- * 5. Salida a una textura RGBA16F para el material: velocidad relativa (dividida por la velocidad media), rapidez
- *    relativa y vorticidad.
+ * 5. Espuma (F5): densidad advectada con la velocidad, que se desvanece con el tiempo y nace donde el agua la
+ *    produce: cizalla y vorticidad, convergencia en superficie (∇·u < 0, donde se juntan las líneas de espuma), choque
+ *    contra orillas y obstáculos (la corriente va hacia tierra), orillas en general y bajíos con corriente.
+ * 6. Salida a dos texturas RGBA16F para el material: velocidad relativa (dividida por la velocidad media), rapidez
+ *    relativa y vorticidad; y espuma.
  *
  * Velocidades en m/s ya exageradas (velocidad del río × exageración), así que los remolinos se mueven a la misma
  * velocidad que las ondas del flow map.
@@ -74,6 +77,8 @@ export function createSimulation(renderer, flow, state) {
   const pB = buf(new Float32Array(N), 1, 'float');
   const divB = buf(new Float32Array(N), 1, 'float');
   const curlB = buf(new Float32Array(N), 1, 'float');
+  const foamA = buf(new Float32Array(N), 1, 'float');
+  const foamB = buf(new Float32Array(N), 1, 'float');
 
   const texture = new THREE.StorageTexture(nx, nz);
   texture.type = THREE.HalfFloatType;
@@ -81,6 +86,12 @@ export function createSimulation(renderer, flow, state) {
   texture.mipmapsAutoUpdate = false;
   texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.name = 'RealisticRiver1.sim';
+  const foamTexture = new THREE.StorageTexture(nx, nz);
+  foamTexture.type = THREE.HalfFloatType;
+  foamTexture.generateMipmaps = false;
+  foamTexture.mipmapsAutoUpdate = false;
+  foamTexture.wrapS = foamTexture.wrapT = THREE.ClampToEdgeWrapping;
+  foamTexture.name = 'RealisticRiver1.foam';
 
   const u = {
     dt: uniform(1 / 30),
@@ -92,6 +103,13 @@ export function createSimulation(renderer, flow, state) {
     turbulence: uniform(0.5), // aceleración de la turbulencia junto a tierra, en unidades de la velocidad media por s
     turbScale: uniform(30), // tamaño de las perturbaciones (m)
     time: uniform(0),
+    // espuma: decaimiento por paso (e^(−dt/vida)) y peso de cada fuente (ya multiplicado por la cantidad general)
+    foamDecay: uniform(0.998),
+    foamShear: uniform(1),
+    foamConvergence: uniform(1),
+    foamImpact: uniform(1),
+    foamBank: uniform(1),
+    foamShallow: uniform(1),
   };
 
   // ---------------------------------------------------------------- utilidades de rejilla
@@ -122,6 +140,8 @@ export function createSimulation(renderer, flow, state) {
     velB.element(k).assign(v);
     pA.element(k).assign(0);
     pB.element(k).assign(0);
+    foamA.element(k).assign(0);
+    foamB.element(k).assign(0);
   })().compute(N);
 
   // ---------------------------------------------------------------- 1. advección A → B
@@ -245,13 +265,54 @@ export function createSimulation(renderer, flow, state) {
     });
   })().compute(N);
 
-  // ---------------------------------------------------------------- 5. B → A y salida para el material
+  // ---------------------------------------------------------------- 5. espuma
+  const foam = Fn(() => {
+    const { k, i, j } = cellIJ();
+    const s = S.element(k);
+    const out = float(0).toVar();
+    If(s.w.equal(WET), () => {
+      const v = velB.element(k);
+      const x = vec2(float(i).add(0.5), float(j).add(0.5));
+      const carried = sampleVel(foamA, x.sub(v.mul(u.dt.div(cell))));
+      const inv = float(1).div(max(u.speed, 1e-4));
+      const rel = length(v).mul(inv); // rapidez relativa (media 1)
+      // la capa de cizalla pegada a tierra (1-2 celdas) es permanente: no cuenta para cizalla ni convergencia, o la
+      // orilla entera se llenaría de espuma; para eso está la fuente de orilla, fina
+      const n = NEAR.element(k);
+      const open = float(1).sub(clamp(n.sub(0.8).div(0.15), 0, 1));
+      // cizalla y vorticidad: solo remolinos marcados (ω relativo a la velocidad media y a 10 m, por encima de 1)
+      const shear = abs(curlB.element(k)).mul(inv).mul(10).sub(1).max(0).mul(open);
+      // convergencia en superficie: ∇·u < 0
+      const dv = velB.element(at(i.add(1), j)).x.sub(velB.element(at(i.sub(1), j)).x)
+        .add(velB.element(at(i, j.add(1))).y.sub(velB.element(at(i, j.sub(1))).y)).div(2 * cell);
+      const conv = dv.negate().mul(inv).mul(10).sub(0.2).max(0).mul(open);
+      // choque: la corriente va hacia tierra (∇cerca apunta a tierra)
+      const gn = vec2(NEAR.element(at(i.add(1), j)).sub(NEAR.element(at(i.sub(1), j))),
+        NEAR.element(at(i, j.add(1))).sub(NEAR.element(at(i, j.sub(1)))));
+      const toward = v.mul(inv).dot(gn.div(length(gn).add(1e-4))).max(0);
+      const impact = toward.mul(n.mul(n));
+      // orilla: encaje fino pegado a tierra (las 1-2 celdas más cercanas), más donde el agua corre
+      const bank = clamp(n.sub(0.85).div(0.15), 0, 1).mul(rel);
+      // bajíos con corriente (menos de ~2 m de agua)
+      const shallow = float(1).sub(clamp(s.z.sub(0.5).div(1.5), 0, 1)).mul(rel).mul(open);
+      const src = shear.mul(u.foamShear).add(conv.mul(u.foamConvergence)).add(impact.mul(u.foamImpact))
+        .add(bank.mul(u.foamBank)).add(shallow.mul(u.foamShallow));
+      // la fuente se satura (1 − e^(−x)) para que una zona muy activa no llene de blanco todo lo que tiene aguas abajo
+      out.assign(clamp(carried.mul(u.foamDecay).add(float(1).sub(src.negate().exp()).mul(u.dt)), 0, 1));
+    });
+    foamB.element(k).assign(out);
+  })().compute(N);
+
+  // ---------------------------------------------------------------- 6. B → A y salida para el material
   const output = Fn(() => {
     const { k, i, j } = cellIJ();
     const v = velB.element(k);
     velA.element(k).assign(v);
     const inv = float(1).div(max(u.speed, 1e-4));
     textureStore(texture, uvec2(i, j), vec4(v.mul(inv), length(v).mul(inv), curlB.element(k)));
+    const f = foamB.element(k);
+    foamA.element(k).assign(f);
+    textureStore(foamTexture, uvec2(i, j), vec4(f, 0, 0, 1));
   })().compute(N);
 
   let pressureIterations = 20;
@@ -259,7 +320,7 @@ export function createSimulation(renderer, flow, state) {
   const rebuildSteps = () => {
     const jac = [];
     for (let n = 0; n < pressureIterations; n += 2) jac.push(jacobiAB, jacobiBA);
-    steps = [advect, curl, forces, divergence, ...jac, subtract, output];
+    steps = [advect, curl, forces, divergence, ...jac, subtract, foam, output];
   };
   rebuildSteps();
 
@@ -274,6 +335,14 @@ export function createSimulation(renderer, flow, state) {
     u.viscosity.value = Math.min(state.viscosity, 0.9);
     u.turbulence.value = state.turbulence;
     u.turbScale.value = state.turbScale;
+    u.foamDecay.value = Math.exp(-h / Math.max(state.foamLife, 0.1));
+    // cantidad general: foamAmount × carácter (0,35 → ×0,1); a carácter 1, ×0,29
+    const amount = state.foamAmount * state.character * 0.29;
+    u.foamShear.value = amount * state.foamShear;
+    u.foamConvergence.value = amount * state.foamConvergence;
+    u.foamImpact.value = amount * state.foamImpact;
+    u.foamBank.value = amount * state.foamBank;
+    u.foamShallow.value = amount * state.foamShallow;
     if (state.pressureIterations !== pressureIterations) {
       pressureIterations = Math.max(2, Math.round(state.pressureIterations / 2) * 2);
       rebuildSteps();
@@ -305,6 +374,7 @@ export function createSimulation(renderer, flow, state) {
   applyState();
   return {
     texture,
+    foamTexture,
     origin: flow.origin.clone(),
     size: flow.size.clone(),
     uniforms: u,
@@ -315,7 +385,8 @@ export function createSimulation(renderer, flow, state) {
     get dispatchesPerStep() { return steps.length; },
     dispose() {
       texture.dispose();
-      for (const node of [init, advect, curl, forces, divergence, jacobiAB, jacobiBA, subtract, output]) node.dispose?.();
+      foamTexture.dispose();
+      for (const node of [init, advect, curl, forces, divergence, jacobiAB, jacobiBA, subtract, foam, output]) node.dispose?.();
     },
   };
 }

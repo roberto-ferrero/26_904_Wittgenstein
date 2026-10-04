@@ -11,6 +11,7 @@ export const DEBUG_VIEWS = {
   'Corriente base (velocidad)': 5,
   'Corriente base frente a _flujo': 6,
   'Simulación (vorticidad)': 7,
+  'Espuma (densidad)': 8,
 };
 
 /**
@@ -34,6 +35,7 @@ export function createDebugMaterial(getDomain, getFlow, geometry, surfaceUniform
   };
   const flowTex = texture(f0.texture);
   const simTex = texture(f0.texture); // se cambia por la textura de la simulación con setSimTexture
+  const foamTex = texture(f0.texture);
   const tex = texture(d0.texture);
   const uvDomain = positionWorld.xz.sub(u.origin).div(u.size);
   const dom = tex.sample(uvDomain);
@@ -90,6 +92,10 @@ export function createDebugMaterial(getDomain, getFlow, geometry, surfaceUniform
   const cVort = select(rel.greaterThan(0.001),
     mix(vec3(0.12), select(w.greaterThan(0), vec3(1, 0.25, 0.1), vec3(0.15, 0.45, 1)), wn).add(dotMix.mul(0.25)), vec3(0.25));
 
+  // 8. espuma: de azul oscuro (nada) a blanco (densidad 1 o más)
+  const fd = clamp(foamTex.sample(p.sub(u.flowOrigin).div(u.flowSize)).x, 0, 1);
+  const cFoam = select(rel.greaterThan(0.001), mix(vec3(0.05, 0.08, 0.25), vec3(1), fd), vec3(0.25));
+
   const material = new THREE.MeshBasicNodeMaterial();
   material.name = 'RealisticRiver1.debug';
   material.fog = false;
@@ -99,7 +105,8 @@ export function createDebugMaterial(getDomain, getFlow, geometry, surfaceUniform
       select(u.view.equal(3), cObst,
         select(u.view.equal(4), cBed,
           select(u.view.equal(5), cFlow,
-            select(u.view.equal(6), cCompare, cVort))))));
+            select(u.view.equal(6), cCompare,
+              select(u.view.equal(7), cVort, cFoam)))))));
 
   return {
     material,
@@ -118,7 +125,7 @@ export function createDebugMaterial(getDomain, getFlow, geometry, surfaceUniform
     },
     /** Textura de velocidad de las vistas de corriente (simulación o base) y textura de la simulación. */
     setVelocityTexture(tex) { flowTex.value = tex; },
-    setSimTexture(tex) { simTex.value = tex; },
+    setSimTexture(tex, foam) { simTex.value = tex; if (foam) foamTex.value = foam; },
     dispose: () => material.dispose(),
   };
 }
